@@ -742,10 +742,24 @@
     const s = overallScore(); const ov = overallVerdict(s);
     const b = state.boy, g = state.girl;
     const node = $('report-content');
+
+    // Pull the fully-rendered content from each analysis tab so the report
+    // contains EVERY page of analysis. renderReport runs last, so all tab
+    // panels are already populated.
+    const grab = (id) => {
+      const el = $('tab-' + id);
+      return el ? el.innerHTML : '';
+    };
+    const section = (title, id) => `
+      <div class="report-section">
+        <h2 class="report-section-title">${esc(title)}</h2>
+        ${grab(id)}
+      </div>`;
+
     node.innerHTML = `
-      <div class="card">
+      <div class="card report-cover">
         <h2 style="text-align:center">Marriage Compatibility Report</h2>
-        <p class="small muted" style="text-align:center">${esc(b.meta.name)} &amp; ${esc(g.meta.name)} — generated ${new Date().toLocaleDateString()}</p>
+        <p class="small muted" style="text-align:center">${esc(b.meta.name)} &amp; ${esc(g.meta.name)} — generated ${new Date().toLocaleString()}</p>
         <div style="text-align:center;margin:10px 0">
           <span class="big-score">${s}<small>/100</small></span><br/>${chip(ov.label, ov.cls)}
         </div>
@@ -760,17 +774,24 @@
           <tr><td>Nearest marriage window</td><td>${esc(r.window.nearestRange)}</td></tr>
           ${r.koota.ashtakoota.doshas.length ? `<tr><td>Dosha alerts</td><td>${r.koota.ashtakoota.doshas.join(', ')}</td></tr>` : ''}
         </table>
+        <div class="card" style="margin-top:14px"><h3>Birth Data</h3>${header(b)}${header(g)}</div>
+        <p class="small muted" style="margin-top:10px">This report contains the complete analysis: visual charts (D1/D9/KP),
+          house-by-house matching, BPHS &amp; KP assessments, Koota matching, marriage timing, the 20-year forecast,
+          transits, health compatibility and Sarvashtakavarga.</p>
       </div>
-      <div class="card"><h3>Birth Data</h3>${header(b)}${header(g)}</div>
-      <div class="card"><h3>Groom — Planetary Positions</h3>${planetTable(b)}</div>
-      <div class="card"><h3>Bride — Planetary Positions</h3>${planetTable(g)}</div>
-      <div class="card"><h3>Ashtakoota Detail</h3>${tableFromAshta(r.koota.ashtakoota)}</div>
-      <div class="card"><h3>Dashakoota Detail</h3>${tableFromDasha(r.koota.dashakoota)}</div>
-      <div class="card"><h3>BPHS Interpretation</h3>${r.bphs.notes.map((n)=>`<p class="small">• ${esc(n)}</p>`).join('')}</div>
-      <div class="card"><h3>KP Interpretation</h3>${r.kp.notes.map((n)=>`<p class="small">• ${esc(n)}</p>`).join('')}</div>
-      <div class="card"><h3>Marriage Timing &amp; Forecast (next periods)</h3>${forecastMini(r.forecast)}</div>
-      <div class="card"><h3>Health Compatibility</h3>${r.health.notes.map((n)=>`<p class="small">• ${esc(n)}</p>`).join('')}</div>
-      <p class="footer-note">For educational &amp; decision-support purposes only.</p>
+
+      ${section('1 · Charts (D1, D9, KP)', 'charts')}
+      ${section('2 · House-by-House Matching (Bhāva)', 'bhava')}
+      ${section('3 · BPHS Assessment', 'bphs')}
+      ${section('4 · KP Assessment', 'kp')}
+      ${section('5 · Koota Matching (Ashtakoota & Dashakoota)', 'koota')}
+      ${section('6 · Marriage Timing', 'timing')}
+      ${section('7 · 20-Year Relationship Forecast', 'forecast')}
+      ${section('8 · Transits (Gochara)', 'transit')}
+      ${section('9 · Health Compatibility', 'health')}
+      ${section('10 · Sarvashtakavarga (SAV)', 'sarvashtaka')}
+
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v4.3</p>
     `;
   }
   function tableFromAshta(a) {

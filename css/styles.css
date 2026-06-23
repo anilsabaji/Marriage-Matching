@@ -310,6 +310,21 @@ td.num, th.num { text-align: right; }
 
 #report-content table { font-size: 12px; }
 
+/* Full report sections */
+.report-section { margin-top: 26px; }
+.report-section-title {
+  font-size: 19px; margin: 0 0 10px;
+  padding: 10px 14px; border-radius: 10px;
+  background: linear-gradient(135deg, var(--accent-3), var(--accent-2));
+  color: #fff;
+}
+.report-cover { border: 2px solid var(--accent-3); }
+@media print {
+  .report-section { page-break-before: always; }
+  .report-cover { page-break-after: always; }
+  .report-section-title { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #5b3fb0 !important; color:#fff !important; }
+}
+
 /* Bhava house-by-house comparison */
 .bhava-house-card { margin-bottom: 22px; }
 .bhava-house-header {
