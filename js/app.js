@@ -203,22 +203,86 @@
     });
     return `<table><thead><tr><th>Bhāva</th><th>Signification</th><th>Sign</th><th>Lord</th><th>Occupants</th><th>Aspected by</th><th>Strength</th></tr></thead><tbody>${out}</tbody></table>`;
   }
-  function renderBhava() {
-    const r = state.results;
-    $('tab-bhava').innerHTML = `
-      <div class="card">
-        <h2>Bhāva (House) Significations — Groom</h2>${header(state.boy)}
-        ${bhavaTable(r.bhavaB)}
-      </div>
-      <div class="card">
-        <h2>Bhāva (House) Significations — Bride</h2>${header(state.girl)}
-        ${bhavaTable(r.bhavaG)}
-      </div>
-      <div class="callout small">Each Bhāva's strength (0–100) blends the dignity and placement of its lord,
-        the benefic/malefic occupants and aspects. Houses 7 (spouse), 2 (family), 11 (fulfilment),
-        5 (romance/progeny) and 8 (intimacy/longevity) carry the most weight for marriage.</div>`;
+
+  function renderBhavaHouseCard(comp, boyName, girlName) {
+    const b = comp.boy, g = comp.girl;
+    return `
+      <div class="card bhava-house-card">
+        <div class="bhava-house-header">
+          <h3>${esc(comp.houseName)}</h3>
+          <div>${chip(comp.verdict.label, comp.verdict.cls)} <span class="muted small">${comp.compatibility}%</span></div>
+        </div>
+        <div class="bhava-domain"><b>${esc(comp.domain)}</b></div>
+        <div class="bhava-what-indicates">
+          <p class="small muted" style="margin:6px 0 4px"><b>What this house indicates:</b></p>
+          <ul class="small muted">${comp.generalIndicates.map((i) => `<li>${esc(i)}</li>`).join('')}</ul>
+          <p class="small" style="margin:4px 0; color:var(--accent-4)"><b>Marriage relevance:</b> ${esc(comp.marriageRelevance)}</p>
+        </div>
+        <div class="bhava-compare-grid">
+          <div class="bhava-col bhava-col-boy">
+            <div class="bhava-col-title boy-title">${esc(boyName)} (Groom)</div>
+            <div class="bhava-sign-info">
+              <span class="bhava-sign-badge">${esc(b.signName)}</span>
+              <span class="muted small">Lord: <b>${b.lord}</b> in H${b.lordHouse} (${esc(b.lordDignity)})</span>
+            </div>
+            <div class="bhava-score-row">${gaugePct('Strength', b.score)}</div>
+            <div class="bhava-chars">
+              <p class="small" style="margin:4px 0"><b>Characteristics &amp; Indications:</b></p>
+              ${b.characteristics.map((c) => `<p class="small bhava-char-item">• ${esc(c)}</p>`).join('')}
+            </div>
+          </div>
+          <div class="bhava-col bhava-col-girl">
+            <div class="bhava-col-title girl-title">${esc(girlName)} (Bride)</div>
+            <div class="bhava-sign-info">
+              <span class="bhava-sign-badge">${esc(g.signName)}</span>
+              <span class="muted small">Lord: <b>${g.lord}</b> in H${g.lordHouse} (${esc(g.lordDignity)})</span>
+            </div>
+            <div class="bhava-score-row">${gaugePct('Strength', g.score)}</div>
+            <div class="bhava-chars">
+              <p class="small" style="margin:4px 0"><b>Characteristics &amp; Indications:</b></p>
+              ${g.characteristics.map((c) => `<p class="small bhava-char-item">• ${esc(c)}</p>`).join('')}
+            </div>
+          </div>
+        </div>
+        <div class="bhava-result">
+          <h3>Compatibility Result</h3>
+          ${gaugePct('House ' + comp.houseNum + ' compatibility', comp.compatibility)}
+          <div class="bhava-factors">
+            ${comp.factors.map((f) => `<p class="small">• ${esc(f)}</p>`).join('')}
+          </div>
+        </div>
+      </div>`;
   }
 
+  function renderBhava() {
+    const comparison = BhavaIndications.compareAll(state.boy, state.girl);
+    const boyName = state.boy.meta.name;
+    const girlName = state.girl.meta.name;
+
+    let houseCards = '';
+    comparison.houses.forEach((comp) => {
+      houseCards += renderBhavaHouseCard(comp, boyName, girlName);
+    });
+
+    $('tab-bhava').innerHTML = `
+      <div class="card">
+        <h2>House-by-House Matching — Side by Side</h2>
+        <p class="small muted">Each of the 12 Bhāvas (houses) studied for both partners: what the house indicates,
+          the characteristics/physical features/mentality it reveals for each person, shown side by side with
+          the compatibility result.</p>
+        <div style="margin:10px 0">
+          ${gaugePct('Overall house-by-house compatibility', comparison.averageCompat)}
+        </div>
+        <div class="grid-2" style="margin-top:8px">
+          <div class="kv"><span>Groom Lagna</span><span>${state.boy.ascendant.signName} (${degStr(state.boy.ascendant.degInSign)})</span></div>
+          <div class="kv"><span>Bride Lagna</span><span>${state.girl.ascendant.signName} (${degStr(state.girl.ascendant.degInSign)})</span></div>
+        </div>
+      </div>
+      ${houseCards}
+      <div class="callout small">Each house comparison evaluates: elemental harmony of the signs, friendship between
+        the lords, strength balance, benefic/malefic occupants, and Jupiter/Venus aspect blessings.
+        Houses 7, 2, 11, 5 and 8 are most critical for marriage.</div>`;
+  }
   /* ---------------- BPHS ---------------- */
   function marriageHouseMini(mi) {
     const cells = [['7th (Spouse)', mi.seventh], ['2nd (Family)', mi.second], ['11th (Fulfilment)', mi.eleventh], ['5th (Romance)', mi.fifth], ['8th (Intimacy)', mi.eighth]];

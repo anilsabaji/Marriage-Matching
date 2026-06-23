@@ -309,3 +309,61 @@ td.num, th.num { text-align: right; }
 }
 
 #report-content table { font-size: 12px; }
+
+/* Bhava house-by-house comparison */
+.bhava-house-card { margin-bottom: 22px; }
+.bhava-house-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 6px; flex-wrap: wrap; gap: 8px;
+}
+.bhava-house-header h3 {
+  margin: 0; font-size: 16px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.bhava-domain { font-size: 13px; color: var(--accent-4); font-weight: 600; margin-bottom: 8px; }
+.bhava-what-indicates { margin-bottom: 12px; padding: 8px 12px; background: rgba(123,92,255,.04); border-radius: 8px; border: 1px solid rgba(123,92,255,.1); }
+.bhava-what-indicates ul { padding-left: 16px; margin: 4px 0; }
+.bhava-what-indicates li { margin: 2px 0; }
+
+.bhava-compare-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+  margin: 12px 0;
+}
+@media (max-width: 820px) { .bhava-compare-grid { grid-template-columns: 1fr; } }
+
+.bhava-col {
+  padding: 14px 16px; border-radius: 12px;
+  border: 1px solid var(--border);
+  background: linear-gradient(160deg, rgba(18,22,42,.6), rgba(12,14,24,.8));
+}
+.bhava-col-boy { border-top: 3px solid #4dc9ff; }
+.bhava-col-girl { border-top: 3px solid #ff7eb3; }
+.bhava-col-title { font-weight: 700; font-size: 13px; margin-bottom: 8px; }
+.boy-title { color: #6fc8ff; }
+.girl-title { color: #ff7eb3; }
+
+.bhava-sign-info {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px;
+}
+.bhava-sign-badge {
+  display: inline-block; padding: 3px 10px; border-radius: 6px;
+  background: linear-gradient(135deg, var(--accent-3), var(--accent-2));
+  color: #fff; font-weight: 700; font-size: 12px;
+}
+.bhava-score-row { margin: 6px 0; }
+.bhava-chars { margin-top: 8px; }
+.bhava-char-item { margin: 3px 0; line-height: 1.4; color: var(--text); opacity: .9; }
+
+.bhava-result {
+  margin-top: 14px; padding: 12px 16px; border-radius: 10px;
+  background: linear-gradient(135deg, rgba(0,212,255,.04), rgba(123,92,255,.04));
+  border: 1px solid rgba(0,212,255,.15);
+}
+.bhava-result h3 {
+  margin: 0 0 6px; font-size: 14px; color: var(--accent-4);
+}
+.bhava-factors { margin-top: 6px; }
+.bhava-factors p { margin: 3px 0; }
+
