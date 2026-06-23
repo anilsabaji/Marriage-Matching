@@ -129,6 +129,92 @@ const Timeline = (function () {
     return val;
   }
 
+  /* ====================================================================
+   * Dual-method significator weights for marriage commitment:
+   *   (A) Parāśara — house lordship + occupancy of 7/2/11/5 (positive) and
+   *       6/8/12 (negative) + the Venus/Jupiter kāraka.
+   *   (B) KP — significator houses (star/occupancy/ownership) of 2/7/11
+   *       (positive) vs 1/6/10/12 (negative).
+   * Each dasha lord's contribution is scaled by its planetary strength.
+   * ================================================================== */
+  function parasharaWeights(chart, gender) {
+    const lagna = chart.ascendant.sign;
+    const lordOf = (h) => Astro.RASHI_LORD[(lagna + h - 1) % 12];
+    const pos = { 7: 3.0, 2: 1.6, 11: 1.6, 5: 1.0 };
+    const neg = { 6: 1.2, 8: 1.4, 12: 1.0 };
+    const w = {};
+    const add = (p, x) => { if (p) w[p] = (w[p] || 0) + x; };
+    for (let h = 1; h <= 12; h++) {
+      const L = lordOf(h);
+      if (pos[h]) add(L, pos[h]);
+      if (neg[h]) add(L, -neg[h]);
+    }
+    Astro.PLANETS.forEach((p) => {
+      const hh = chart.planets[p].house;
+      if (pos[hh]) add(p, 0.6 * pos[hh]);
+      if (neg[hh]) add(p, -0.6 * neg[hh]);
+    });
+    add(gender === 'female' ? 'Jupiter' : 'Venus', 2.0);
+    add('Venus', 0.5);
+    return w;
+  }
+
+  function kpWeights(chart, gender) {
+    const pos = { 7: 3.0, 2: 1.6, 11: 1.6, 5: 1.0 };
+    const neg = { 6: 1.2, 1: 0.8, 10: 1.0, 12: 1.0 };
+    const w = {};
+    Astro.PLANETS.forEach((p) => {
+      let v = 0; let sig = [];
+      try { sig = KP.significatorHouses(p, chart); } catch (e) { sig = []; }
+      sig.forEach((h) => { if (pos[h]) v += pos[h]; if (neg[h]) v -= neg[h]; });
+      w[p] = v;
+    });
+    const k = gender === 'female' ? 'Jupiter' : 'Venus';
+    w[k] = (w[k] || 0) + 1.5;
+    return w;
+  }
+
+  function clampDual(v) { return Math.max(5, Math.min(98, Math.round(50 + v * 8))); }
+
+  function strengthMult(strengthMap, lord) {
+    return strengthMap && strengthMap[lord] ? strengthMap[lord].mult : 1;
+  }
+
+  // Commitment (KP & Parāśara) at a given jd, scaled by planetary strength.
+  function commitmentAt(chart, parW, kpW, strengthMap, jd, mdList) {
+    const r = Dasha.runningAt(chart, jd, mdList);
+    if (!r || !r.ad) return { kp: 5, par: 5, run: r };
+    const g = (W, lord, wt) => (W[lord] || 0) * wt * strengthMult(strengthMap, lord);
+    const par = g(parW, r.md.lord, 0.5) + g(parW, r.ad.lord, 0.35) + (r.pd ? g(parW, r.pd.lord, 0.15) : 0);
+    const kp = g(kpW, r.md.lord, 0.5) + g(kpW, r.ad.lord, 0.35) + (r.pd ? g(kpW, r.pd.lord, 0.15) : 0);
+    return { kp: clampDual(kp), par: clampDual(par), run: r };
+  }
+
+  // Dual-method commitment series for both partners over `years`.
+  function strengthSeriesDual(boyChart, girlChart, fromJd, years, stepMonths) {
+    years = years || 20; stepMonths = stepMonths || 3;
+    const bPar = parasharaWeights(boyChart, 'male'), bKp = kpWeights(boyChart, 'male');
+    const gPar = parasharaWeights(girlChart, 'female'), gKp = kpWeights(girlChart, 'female');
+    const bSM = (typeof PlanetStrength !== 'undefined') ? PlanetStrength.map(boyChart) : {};
+    const gSM = (typeof PlanetStrength !== 'undefined') ? PlanetStrength.map(girlChart) : {};
+    const bMd = Dasha.mahadashas(boyChart, years + 130);
+    const gMd = Dasha.mahadashas(girlChart, years + 130);
+    const series = [];
+    const totalM = years * 12; const MONTH = 30.436875;
+    for (let m = 0; m <= totalM; m += stepMonths) {
+      const jd = fromJd + m * MONTH;
+      const b = commitmentAt(boyChart, bPar, bKp, bSM, jd, bMd);
+      const g = commitmentAt(girlChart, gPar, gKp, gSM, jd, gMd);
+      const d = Dasha.jdToDate(jd);
+      series.push({
+        jd, m, year: d.getUTCFullYear(), label: Dasha.fmtYM(jd),
+        boyKP: b.kp, boyPar: b.par, girlKP: g.kp, girlPar: g.par,
+      });
+    }
+    return { series, strength: { boy: bSM, girl: gSM },
+      weights: { boyPar: bPar, boyKp: bKp, girlPar: gPar, girlKp: gKp } };
+  }
+
   // Evenly-sampled commitment-strength time series for both partners.
   // Returns array of { jd, m (months from start), year (calendar), label,
   // boy (0-100), girl (0-100) } sampled every `stepMonths`.
@@ -176,17 +262,26 @@ const Timeline = (function () {
     const bsp = stressPlanets(boyChart);
     const gmp = marriagePlanets(girlChart, 'female');
     const gsp = stressPlanets(girlChart);
+    // dual-method weights + planetary strength maps
+    const bPar = parasharaWeights(boyChart, 'male'), bKp = kpWeights(boyChart, 'male');
+    const gPar = parasharaWeights(girlChart, 'female'), gKp = kpWeights(girlChart, 'female');
+    const bSM = (typeof PlanetStrength !== 'undefined') ? PlanetStrength.map(boyChart) : {};
+    const gSM = (typeof PlanetStrength !== 'undefined') ? PlanetStrength.map(girlChart) : {};
 
     // Drive the timeline off the BOY's AD periods (a stable cadence), and for
     // each, sample mid-point for both partners + transits.
-    const { periods } = Dasha.expandWindow(boyChart, fromJd, years);
+    const win = Dasha.expandWindow(boyChart, fromJd, years);
+    const bMd = win.mds;
+    const gMd = Dasha.mahadashas(girlChart, years + 130);
     const rows = [];
-    periods.forEach((p) => {
+    win.periods.forEach((p) => {
       const mid = (Math.max(p.startJd, fromJd) + p.endJd) / 2;
       const bScore = clamp(scoreAt(boyChart, 'male', bmp, bsp, mid));
       const gScore = clamp(scoreAt(girlChart, 'female', gmp, gsp, mid));
-      const bRun = Dasha.runningAt(boyChart, mid);
-      const gRun = Dasha.runningAt(girlChart, mid);
+      const bC = commitmentAt(boyChart, bPar, bKp, bSM, mid, bMd);
+      const gC = commitmentAt(girlChart, gPar, gKp, gSM, mid, gMd);
+      const bRun = Dasha.runningAt(boyChart, mid, bMd);
+      const gRun = Dasha.runningAt(girlChart, mid, gMd);
       const bT = Transit.evaluate(boyChart, mid);
       const gT = Transit.evaluate(girlChart, mid);
       const combined = Math.round((bScore + gScore) / 2);
@@ -201,6 +296,9 @@ const Timeline = (function () {
         combined,
         band: band(combined),
         transitNote: mergeTriggers(bT, gT),
+        boyKP: bC.kp, boyPar: bC.par, girlKP: gC.kp, girlPar: gC.par,
+        combinedKP: Math.round((bC.kp + gC.kp) / 2),
+        combinedPar: Math.round((bC.par + gC.par) / 2),
       });
     });
     return rows;
@@ -227,7 +325,8 @@ const Timeline = (function () {
 
   return {
     marriagePlanets, stressPlanets, marriageWindow,
-    coupleMarriageWindow, relationshipForecast, strengthSeries, scoreAt, band, clamp,
+    coupleMarriageWindow, relationshipForecast, strengthSeries, strengthSeriesDual,
+    parasharaWeights, kpWeights, commitmentAt, scoreAt, band, clamp,
   };
 })();
 

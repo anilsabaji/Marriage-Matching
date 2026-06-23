@@ -94,6 +94,7 @@
     r.transitG = Transit.summary(girl, state.fromJd, 20);
     r.sarvashtaka = Sarvashtaka.coupleAnalysis(boy, girl);
     r.strengthSeries = Timeline.strengthSeries(boy, girl, state.fromJd, 20, 3);
+    r.strengthDual = Timeline.strengthSeriesDual(boy, girl, state.fromJd, 20, 3);
     state.results = r;
 
     const safeRender = (fn, name) => { try { fn(); } catch(e) { console.warn(name + ' render error:', e); } };
@@ -543,43 +544,74 @@
   /* ---------------- Forecast ---------------- */
   function renderForecast() {
     const r = state.results;
+    const dual = r.strengthDual ? r.strengthDual.series : [];
+    const avg = (k) => dual.length ? Math.round(dual.reduce((a, s) => a + s[k], 0) / dual.length) : 0;
+    const kpSpan = (v) => `<span class="kp-val">${v}</span>`;
+    const parSpan = (v) => `<span class="par-val">${v}</span>`;
+
     let rows = '';
     r.forecast.forEach((f) => {
       rows += `<tr class="band-${f.band.cls}">
         <td>${f.start} – ${f.end}</td>
         <td class="small">${f.boyDasha}</td>
         <td class="small">${f.girlDasha}</td>
-        <td class="num">${f.boyStrength}</td>
-        <td class="num">${f.girlStrength}</td>
-        <td class="num"><b>${f.combined}</b></td>
+        <td class="num">${kpSpan(f.boyKP != null ? f.boyKP : '-')}/${parSpan(f.boyPar != null ? f.boyPar : '-')}</td>
+        <td class="num">${kpSpan(f.girlKP != null ? f.girlKP : '-')}/${parSpan(f.girlPar != null ? f.girlPar : '-')}</td>
+        <td class="num"><b>${kpSpan(f.combinedKP != null ? f.combinedKP : '-')}/${parSpan(f.combinedPar != null ? f.combinedPar : '-')}</b></td>
         <td>${chip(f.band.label, f.band.cls)}</td>
         <td class="small muted">${esc(f.transitNote)}</td>
       </tr>`;
     });
+
     $('tab-forecast').innerHTML = `
       <div class="card">
         <h2>Relationship Strength Over 20 Years — Commitment Graph</h2>
         <p class="small muted">Time runs left → right along the centre line. <b style="color:#4dc9ff">${esc(state.boy.meta.name)} (Groom)</b>'s
-          commitment to the marriage is drawn <b>above</b> the centre line; <b style="color:#ff7eb3">${esc(state.girl.meta.name)} (Bride)</b>'s
-          is drawn <b>below</b>. The band between them forms a "pipe" — wide where both are strongly committed, narrow where
-          commitment weakens. Dots on the centre line each year show whose commitment leads (blue = groom, pink = bride).</p>
-        ${typeof ChartDraw !== 'undefined' && r.strengthSeries ? ChartDraw.relationshipPipe(r.strengthSeries, { boyName: state.boy.meta.name, girlName: state.girl.meta.name }) : ''}
+          commitment is drawn <b>above</b> the centre line; <b style="color:#ff7eb3">${esc(state.girl.meta.name)} (Bride)</b>'s is drawn <b>below</b>.
+          Each partner has <b>two values in two colours</b> — <span class="kp-val">KP significators</span> and
+          <span class="par-val">Parāśara significators</span> of the running dasha lords — each scaled by the planet's
+          strength (direction, speed, declination, exaltation, debilitation &amp; its cancellation, combustion).
+          The band forms a "pipe": wide where commitment is strong, narrow where it weakens.</p>
+        ${typeof ChartDraw !== 'undefined' && dual.length ? ChartDraw.relationshipPipeDual(dual, { boyName: state.boy.meta.name, girlName: state.girl.meta.name }) : ''}
+        <div class="grid-2" style="margin-top:10px">
+          <div class="card" style="margin:0">
+            <h3>${esc(state.boy.meta.name)} (Groom) — 20-yr average</h3>
+            <div class="kv"><span>KP commitment</span><span>${kpSpan(avg('boyKP'))}/100</span></div>
+            <div class="kv"><span>Parāśara commitment</span><span>${parSpan(avg('boyPar'))}/100</span></div>
+          </div>
+          <div class="card" style="margin:0">
+            <h3>${esc(state.girl.meta.name)} (Bride) — 20-yr average</h3>
+            <div class="kv"><span>KP commitment</span><span>${kpSpan(avg('girlKP'))}/100</span></div>
+            <div class="kv"><span>Parāśara commitment</span><span>${parSpan(avg('girlPar'))}/100</span></div>
+          </div>
+        </div>
         <div class="legend-line">
-          <span class="dot" style="background:#4dc9ff"></span>${esc(state.boy.meta.name)} (Groom) — above centre &nbsp;&nbsp;
-          <span class="dot" style="background:#ff7eb3"></span>${esc(state.girl.meta.name)} (Bride) — below centre
+          <span class="dot" style="background:#f5b301"></span><span class="kp-val">KP value</span> &nbsp;&nbsp;
+          <span class="dot" style="background:#2bbf6a"></span><span class="par-val">Parāśara value</span> &nbsp;&nbsp;
+          <span class="dot" style="background:#4dc9ff"></span>Groom (above) &nbsp;&nbsp;
+          <span class="dot" style="background:#ff7eb3"></span>Bride (below)
         </div>
       </div>
       <div class="card">
         <h2>20-Year Relationship Strength &amp; Weakness Forecast</h2>
-        <p class="small muted">Period-by-period (Mahādaśā / Antardaśā / Pratyantardaśā) outlook for the union,
-          combining both partners' dasha favourability with concurrent planetary transits. Strength on 0–100.</p>
-        <table><thead><tr><th>Period</th><th>Groom MD/AD/PD</th><th>Bride MD/AD/PD</th><th class="num">Groom</th><th class="num">Bride</th><th class="num">Combined</th><th>Band</th><th>Key transit</th></tr></thead>
+        <p class="small muted">Period-by-period (Mahādaśā / Antardaśā / Pratyantardaśā) outlook. Each cell shows two
+          strength values: <span class="kp-val">KP</span> / <span class="par-val">Parāśara</span> (0–100), derived from the
+          houses the running dasha lords signify, scaled by planetary strength.</p>
+        <table><thead><tr>
+          <th>Period</th><th>Groom MD/AD/PD</th><th>Bride MD/AD/PD</th>
+          <th class="num">Groom <span class="kp-val">KP</span>/<span class="par-val">Par</span></th>
+          <th class="num">Bride <span class="kp-val">KP</span>/<span class="par-val">Par</span></th>
+          <th class="num">Combined <span class="kp-val">KP</span>/<span class="par-val">Par</span></th>
+          <th>Band</th><th>Key transit</th>
+        </tr></thead>
         <tbody>${rows}</tbody></table>
         <div class="legend-line"><span class="dot good"></span>Strong/Supportive &nbsp; <span class="dot mid"></span>Mixed &nbsp; <span class="dot bad"></span>Testing/Strained</div>
       </div>
-      <div class="callout small">Phases marked <i>Testing</i> indicate periods needing extra communication, patience
-        and shared effort (often Saturn/Rahu activations or 6/8/12-lord sub-periods); <i>Strong</i> phases favour
-        harmony, milestones (children, property) and renewal of the bond.</div>`;
+      <div class="callout small"><b>Two methods, two colours:</b> the <span class="kp-val">KP</span> value reads the dasha lord's
+        <i>nakshatra/sub-lord significators</i> of houses 2-7-11 (vs 1-6-10-12); the <span class="par-val">Parāśara</span> value reads its
+        <i>house lordship &amp; occupancy</i> of 7-2-11-5 (vs 6-8-12). Both are multiplied by the planet's computed strength
+        (Cheṣṭā/retrograde, speed, declination, exaltation, Neecha-Bhanga-aware debilitation, combustion). Where the two lines
+        diverge, the two systems disagree on that period's promise — a cue for closer manual judgement.</div>`;
   }
 
   /* ---------------- Transit ---------------- */
@@ -805,7 +837,7 @@
       ${section('9 · Health Compatibility', 'health')}
       ${section('10 · Sarvashtakavarga (SAV)', 'sarvashtaka')}
 
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v4.8</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v4.9</p>
       <p class="dev-credit footer-credit">Developed by <b>Dr. Anil Sabaji</b> &nbsp;•&nbsp; Email: anilsabaji@gmail.com</p>
     `;
   }
@@ -882,7 +914,7 @@ body { padding: 24px; max-width: 1000px; margin: 0 auto; }
 <div class="report-meta">Generated ${esc(dateStr)} — Vedic Marriage Matching Module (BPHS &amp; KP)</div>
 <div id="report-content">${reportHtml}</div>
 <p class="footer-note" style="text-align:center;margin-top:24px;opacity:.7;font-size:11.5px">
-  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v4.8
+  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v4.9
 </p>
 <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>
 </body>

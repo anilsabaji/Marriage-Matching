@@ -306,7 +306,73 @@ const ChartDraw = (function () {
     return svg;
   }
 
-  return { svgChart, d1Chart, d9Chart, kpChart, navamsaSign, renderTriple, relationshipPipe, SIGN_ABBR, PLANET_ABBR, SI_GRID, SIGN_POS };
+  return { svgChart, d1Chart, d9Chart, kpChart, navamsaSign, renderTriple, relationshipPipe, relationshipPipeDual, SIGN_ABBR, PLANET_ABBR, SI_GRID, SIGN_POS };
+
+  /* ======================================================================
+   * Dual-method relationship pipe: two values per partner in two colours
+   *   KP (amber) and Parāśara (green). Groom above the centre, Bride below.
+   * series: [{ m, year, boyKP, boyPar, girlKP, girlPar }]
+   * ==================================================================== */
+  function relationshipPipeDual(series, opts) {
+    opts = opts || {};
+    const boyName = escSvg(opts.boyName || 'Groom');
+    const girlName = escSvg(opts.girlName || 'Bride');
+    const KPc = '#f5b301', PARc = '#2bbf6a';
+    const W = 1040, H = 440, padL = 60, padR = 20, padT = 38, padB = 58;
+    const plotW = W - padL - padR, plotH = H - padT - padB;
+    const cy = padT + plotH / 2, maxAmp = plotH / 2 - 6;
+    const n = series.length;
+    if (n < 2) return '<div class="muted small">Not enough data to plot.</div>';
+    const totalM = series[n - 1].m || 1;
+    const xOfM = (m) => padL + (m / totalM) * plotW;
+    const x = (i) => xOfM(series[i].m);
+    const up = (v) => cy - (v / 100) * maxAmp;
+    const dn = (v) => cy + (v / 100) * maxAmp;
+    const line = (key, dir) => series.map((s, i) => `${x(i).toFixed(1)},${(dir === 'up' ? up(s[key]) : dn(s[key])).toFixed(1)}`).join(' ');
+    const boyAvg = series.map((s, i) => `${x(i).toFixed(1)},${up((s.boyKP + s.boyPar) / 2).toFixed(1)}`).join(' ');
+    const girlAvg = series.map((s, i) => `${x(i).toFixed(1)},${dn((s.girlKP + s.girlPar) / 2).toFixed(1)}`).join(' ');
+    const boyArea = `${padL},${cy} ${boyAvg} ${x(n - 1).toFixed(1)},${cy}`;
+    const girlArea = `${padL},${cy} ${girlAvg} ${x(n - 1).toFixed(1)},${cy}`;
+
+    let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet" class="pipe-svg" xmlns="http://www.w3.org/2000/svg">`;
+    svg += `<defs>
+      <linearGradient id="boyGradD" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4dc9ff" stop-opacity="0.28"/><stop offset="100%" stop-color="#4dc9ff" stop-opacity="0.04"/></linearGradient>
+      <linearGradient id="girlGradD" x1="0" y1="1" x2="0" y2="0"><stop offset="0%" stop-color="#ff7eb3" stop-opacity="0.28"/><stop offset="100%" stop-color="#ff7eb3" stop-opacity="0.04"/></linearGradient>
+    </defs>`;
+    // strength guides
+    [0.5, 1].forEach((f) => {
+      const yu = cy - f * maxAmp, yd = cy + f * maxAmp;
+      svg += `<line x1="${padL}" y1="${yu.toFixed(1)}" x2="${padL + plotW}" y2="${yu.toFixed(1)}" stroke="#2a3060" stroke-width="0.5" stroke-dasharray="3 4"/>`;
+      svg += `<line x1="${padL}" y1="${yd.toFixed(1)}" x2="${padL + plotW}" y2="${yd.toFixed(1)}" stroke="#2a3060" stroke-width="0.5" stroke-dasharray="3 4"/>`;
+    });
+    // year gridlines + labels
+    const baseYear = series[0].year, years = Math.round(totalM / 12), stepY = years > 12 ? 2 : 1;
+    for (let yr = 0; yr <= years; yr += stepY) {
+      const xm = xOfM(yr * 12);
+      svg += `<line x1="${xm.toFixed(1)}" y1="${padT}" x2="${xm.toFixed(1)}" y2="${padT + plotH}" stroke="#222845" stroke-width="0.5"/>`;
+      svg += `<text x="${xm.toFixed(1)}" y="${(padT + plotH + 18).toFixed(1)}" text-anchor="middle" class="pipe-axis">${baseYear + yr}</text>`;
+      svg += `<text x="${xm.toFixed(1)}" y="${(padT + plotH + 32).toFixed(1)}" text-anchor="middle" class="pipe-axis-sub">+${yr}y</text>`;
+    }
+    // fills
+    svg += `<polygon points="${boyArea}" fill="url(#boyGradD)"/>`;
+    svg += `<polygon points="${girlArea}" fill="url(#girlGradD)"/>`;
+    // lines (Parāśara first, then KP on top)
+    svg += `<polyline points="${line('boyPar', 'up')}" fill="none" stroke="${PARc}" stroke-width="2" stroke-linejoin="round"/>`;
+    svg += `<polyline points="${line('boyKP', 'up')}" fill="none" stroke="${KPc}" stroke-width="2" stroke-linejoin="round"/>`;
+    svg += `<polyline points="${line('girlPar', 'down')}" fill="none" stroke="${PARc}" stroke-width="2" stroke-linejoin="round"/>`;
+    svg += `<polyline points="${line('girlKP', 'down')}" fill="none" stroke="${KPc}" stroke-width="2" stroke-linejoin="round"/>`;
+    // centre time line
+    svg += `<line x1="${padL}" y1="${cy}" x2="${padL + plotW}" y2="${cy}" stroke="#e7e9ee" stroke-width="1.5"/>`;
+    // side labels
+    svg += `<text x="${padL - 8}" y="${(padT + 12).toFixed(1)}" text-anchor="end" class="pipe-side boy-side">${boyName} ▲</text>`;
+    svg += `<text x="${padL - 8}" y="${(padT + plotH).toFixed(1)}" text-anchor="end" class="pipe-side girl-side">${girlName} ▼</text>`;
+    svg += `<text x="${padL - 8}" y="${(cy + 3).toFixed(1)}" text-anchor="end" class="pipe-axis-sub">weak</text>`;
+    // in-graph legend
+    svg += `<rect x="${padL + 4}" y="${padT - 4}" width="11" height="11" rx="2" fill="${KPc}"/><text x="${padL + 19}" y="${padT + 5}" class="pipe-axis">KP</text>`;
+    svg += `<rect x="${padL + 52}" y="${padT - 4}" width="11" height="11" rx="2" fill="${PARc}"/><text x="${padL + 67}" y="${padT + 5}" class="pipe-axis">Parāśara</text>`;
+    svg += '</svg>';
+    return svg;
+  }
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = ChartDraw;

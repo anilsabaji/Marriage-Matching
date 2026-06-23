@@ -387,6 +387,8 @@ td.num, th.num { text-align: right; }
 .pdf-render .dev-credit b { color: #5b3fb0 !important; }
 .pdf-render .pipe-svg { background: #f7f7fb !important; border-color: #ccc !important; }
 .pdf-render .pipe-svg .pipe-axis, .pdf-render .pipe-svg .pipe-axis-sub { fill: #555 !important; }
+.pdf-render .kp-val { color: #b87a00 !important; }
+.pdf-render .par-val { color: #1d7a4d !important; }
 
 /* Bhava house-by-house comparison */
 .bhava-house-card { margin-bottom: 22px; }
@@ -493,4 +495,8 @@ td.num, th.num { text-align: right; }
 .pipe-svg .pipe-side { font-size: 11px; font-weight: 700; font-family: inherit; }
 .pipe-svg .boy-side { fill: #4dc9ff; }
 .pipe-svg .girl-side { fill: #ff7eb3; }
+
+/* KP vs Parāśara two-colour values */
+.kp-val { color: #f5b301; font-weight: 700; }
+.par-val { color: #2bbf6a; font-weight: 700; }
 

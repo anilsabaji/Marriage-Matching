@@ -119,6 +119,17 @@ const Manual = (function () {
       both partners' readiness is jointly high. The <b>20-year forecast</b> reports the
       relationship strength band for each successive period, blending both partners'
       dasha favourability with concurrent transits.</p>
+      <p><b>Dual-method commitment strength.</b> The 20-year commitment graph plots two
+      independently-computed values per partner: a <b>KP</b> value (from the running dasha
+      lords' nakṣatra/sub-lord significators of houses 2-7-11 vs 1-6-10-12) and a
+      <b>Parāśara</b> value (from those lords' house lordship &amp; occupancy of 7-2-11-5
+      vs 6-8-12). Each lord's contribution is scaled by a <b>planetary strength multiplier</b>
+      (<code>planet-strength.js</code>) built from direction (retrograde/Cheṣṭā), speed
+      (fast/slow vs mean motion), declination, exaltation/own/friend/enemy dignity,
+      debilitation <i>and its cancellation</i> (Neecha Bhanga), and combustion. The two
+      values are shown in two colours (KP = amber, Parāśara = green), both as numbers and
+      as lines on the graph; divergence between them flags periods where the two systems
+      disagree.</p>
 
       <h3>9. Health Compatibility Screener (<code>health.js</code>)</h3>
       <p>For each partner the screener evaluates the Lagna lord (vitality), the 6th
