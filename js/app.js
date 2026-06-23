@@ -791,7 +791,7 @@
       ${section('9 · Health Compatibility', 'health')}
       ${section('10 · Sarvashtakavarga (SAV)', 'sarvashtaka')}
 
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v4.3</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v4.4</p>
     `;
   }
   function tableFromAshta(a) {
@@ -811,15 +811,18 @@
   $('downloadPdf').addEventListener('click', () => {
     if (!state.results) { alert('Please generate a report first (Tab 1).'); return; }
     const el = $('report-content');
+    const name = `Marriage-Report-${state.boy.meta.name}-${state.girl.meta.name}.pdf`.replace(/\s+/g, '_');
     if (window.html2pdf) {
-      const name = `Marriage-Report-${state.boy.meta.name}-${state.girl.meta.name}.pdf`.replace(/\s+/g, '_');
+      // Apply light printable theme so output isn't blank (white-on-white)
+      el.classList.add('pdf-render');
+      const restore = () => el.classList.remove('pdf-render');
       window.html2pdf().set({
-        margin: 10, filename: name,
+        margin: [8, 8, 8, 8], filename: name,
         image: { type: 'jpeg', quality: 0.95 },
-        html2canvas: { scale: 2, backgroundColor: '#ffffff' },
+        html2canvas: { scale: 1.6, backgroundColor: '#ffffff', useCORS: true, logging: false, windowWidth: 1100 },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        pagebreak: { mode: ['css', 'legacy'] },
-      }).from(el).save();
+        pagebreak: { mode: ['css', 'legacy'], before: '.report-section' },
+      }).from(el).save().then(restore).catch((e) => { restore(); console.error('PDF error', e); alert('PDF generation had an issue; try "Open print dialog" or "Download HTML" instead.'); });
     } else {
       window.print();
     }
