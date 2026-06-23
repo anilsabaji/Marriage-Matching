@@ -63,11 +63,11 @@
     e.preventDefault();
     try {
       generate();
-      setTab('charts');
     } catch (err) {
       alert('Calculation error: ' + err.message);
       console.error(err);
     }
+    if (state.results) setTab('charts');
   });
 
   /* ---------------- generate ---------------- */
@@ -94,17 +94,18 @@
     r.transitG = Transit.summary(girl, state.fromJd, 20);
     state.results = r;
 
-    renderSummary();
-    renderCharts();
-    renderBhava();
-    renderBPHS();
-    renderKP();
-    renderKoota();
-    renderTiming();
-    renderForecast();
-    renderTransit();
-    renderHealth();
-    renderReport();
+    const safeRender = (fn, name) => { try { fn(); } catch(e) { console.warn(name + ' render error:', e); } };
+    safeRender(renderSummary, 'Summary');
+    safeRender(renderCharts, 'Charts');
+    safeRender(renderBhava, 'Bhava');
+    safeRender(renderBPHS, 'BPHS');
+    safeRender(renderKP, 'KP');
+    safeRender(renderKoota, 'Koota');
+    safeRender(renderTiming, 'Timing');
+    safeRender(renderForecast, 'Forecast');
+    safeRender(renderTransit, 'Transit');
+    safeRender(renderHealth, 'Health');
+    safeRender(renderReport, 'Report');
   }
 
   function overallScore() {
