@@ -55,6 +55,7 @@ header.app-header {
   position: relative; z-index: 1;
   padding: 26px 30px 18px;
   border-bottom: 1px solid var(--border);
+  text-align: center;
   background:
     radial-gradient(800px 150px at 10% -30%, rgba(123,92,255,.25), transparent),
     radial-gradient(600px 150px at 60% -20%, rgba(255,77,138,.15), transparent),
@@ -64,7 +65,7 @@ header.app-header {
 }
 .app-header h1 {
   margin: 0; font-size: 26px; letter-spacing: .3px;
-  display: flex; align-items: center; gap: 12px;
+  display: flex; align-items: center; justify-content: center; gap: 12px;
   background: linear-gradient(135deg, var(--accent), var(--accent-2), var(--accent-3));
   -webkit-background-clip: text; -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -76,7 +77,7 @@ header.app-header {
   background-clip: text;
   filter: drop-shadow(0 0 8px rgba(255,194,51,.5));
 }
-.app-header p { margin: 8px 0 0; color: var(--muted); font-size: 13px; max-width: 900px; }
+.app-header p { margin: 8px auto 0; color: var(--muted); font-size: 13px; max-width: 900px; }
 
 /* Developer credit — visible on screen, print and PDF */
 .dev-credit {
