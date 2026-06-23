@@ -389,6 +389,8 @@ td.num, th.num { text-align: right; }
 }
 .geo-item:hover { background: rgba(123,92,255,.15); }
 .geo-item:last-child { border-bottom: none; }
+.geo-item.geo-loading { color: var(--muted); font-style: italic; cursor: default; justify-content: center; }
+.geo-item.geo-loading:hover { background: transparent; }
 .geo-coords { font-size: 11px; color: var(--muted); margin-left: 8px; white-space: nowrap; }
 
 /* Chart SVG */

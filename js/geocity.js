@@ -80,11 +80,16 @@ const GeoCity = (function () {
       clearTimeout(debounceTimer);
       const val = input.value.trim();
       if (val.length < 2) { dropdown.style.display = 'none'; return; }
+      dropdown.innerHTML = '<div class="geo-item geo-loading">Searching...</div>';
+      dropdown.style.display = 'block';
       debounceTimer = setTimeout(async () => {
         results = await searchCity(val);
-        if (results.length === 0) { dropdown.style.display = 'none'; return; }
+        if (results.length === 0) {
+          dropdown.innerHTML = '<div class="geo-item geo-loading">No results found. Try a different spelling.</div>';
+          return;
+        }
         dropdown.innerHTML = results.map((r, i) =>
-          `<div class="geo-item" data-idx="${i}">${escHtml(r.name)}<span class="geo-coords">${r.lat.toFixed(2)}, ${r.lon.toFixed(2)}</span></div>`
+          `<div class="geo-item" data-idx="${i}">${escHtml(r.name)}<span class="geo-coords">${r.lat.toFixed(2)}, ${r.lon.toFixed(2)} (TZ ${r.tz >= 0 ? '+' : ''}${r.tz})</span></div>`
         ).join('');
         dropdown.style.display = 'block';
       }, 350);
