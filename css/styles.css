@@ -373,3 +373,36 @@ td.num, th.num { text-align: right; }
 .bav-table td.pass { color: var(--good); font-weight: 700; }
 .bav-table td.fail { color: var(--bad); font-weight: 700; }
 
+/* Geocity autocomplete */
+.geo-autocomplete-wrap { position: relative; }
+.geo-dropdown {
+  position: absolute; top: 100%; left: 0; right: 0; z-index: 100;
+  background: var(--panel); border: 1px solid var(--accent-3);
+  border-radius: 0 0 10px 10px; max-height: 220px; overflow-y: auto;
+  box-shadow: 0 8px 24px rgba(0,0,0,.5);
+}
+.geo-item {
+  padding: 9px 12px; cursor: pointer; font-size: 13px;
+  border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+  transition: background .1s;
+}
+.geo-item:hover { background: rgba(123,92,255,.15); }
+.geo-item:last-child { border-bottom: none; }
+.geo-coords { font-size: 11px; color: var(--muted); margin-left: 8px; white-space: nowrap; }
+
+/* Chart SVG */
+.chart-triple {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+  margin: 12px 0;
+}
+@media (max-width: 900px) { .chart-triple { grid-template-columns: 1fr; } }
+.chart-box {
+  background: rgba(8,10,24,.6); border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px; text-align: center;
+}
+.chart-svg { max-width: 100%; height: auto; }
+.chart-svg .chart-title { fill: var(--accent); font-size: 11px; font-weight: 700; font-family: inherit; }
+.chart-svg .chart-sign { fill: var(--accent-4); font-size: 9px; font-weight: 600; font-family: inherit; }
+.chart-svg .chart-planet { fill: var(--text); font-size: 10px; font-weight: 600; font-family: inherit; }
+

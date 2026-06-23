@@ -183,11 +183,25 @@
   function renderCharts() {
     const b = state.boy, g = state.girl;
     $('tab-charts').innerHTML = `
-      <div class="grid-2">
-        <div class="card"><h2>Groom — Rāśi / Planetary Chart</h2>${header(b)}${planetTable(b)}</div>
-        <div class="card"><h2>Bride — Rāśi / Planetary Chart</h2>${header(g)}${planetTable(g)}</div>
+      <div class="card">
+        <h2>Visual Charts — D1 Rāśi, D9 Navāṁśa, KP Placidus</h2>
+        <p class="small muted">South-Indian style box charts. Lagna sign is highlighted. As = Ascendant. ᴿ = Retrograde.</p>
       </div>
-      <div class="card"><h3>How to read this</h3><p class="small muted">Positions are sidereal (Lahiri). "House" uses the Whole-Sign system from the Lagna (BPHS frame). "Star Lord" and "Sub Lord" are the Vimśottari nakshatra lord and KP sub-lord. (R) marks retrograde motion; Rahu/Ketu are always retrograde.</p></div>`;
+      <div class="card">
+        <h3>Groom Charts</h3>${header(b)}
+        ${typeof ChartDraw !== 'undefined' ? ChartDraw.renderTriple(b, b.meta.name) : '<p class="muted">Chart renderer not loaded.</p>'}
+      </div>
+      <div class="card">
+        <h3>Bride Charts</h3>${header(g)}
+        ${typeof ChartDraw !== 'undefined' ? ChartDraw.renderTriple(g, g.meta.name) : '<p class="muted">Chart renderer not loaded.</p>'}
+      </div>
+      <div class="card">
+        <h2>Planetary Positions — Groom</h2>${header(b)}${planetTable(b)}
+      </div>
+      <div class="card">
+        <h2>Planetary Positions — Bride</h2>${header(g)}${planetTable(g)}
+      </div>
+      <div class="card"><h3>How to read this</h3><p class="small muted">Positions are sidereal (Lahiri). D1 uses Whole-Sign houses from the Lagna (BPHS frame). D9 (Navāṁśa) shows the 9th-harmonic divisional chart, critical for marriage assessment. KP chart places planets by Porphyry/Placidus cusp houses with house numbers (H1–H12) marked. "Star Lord" and "Sub Lord" are the Vimśottari nakshatra lord and KP sub-lord. (R) / ᴿ marks retrograde motion.</p></div>`;
   }
 
   /* ---------------- bhava ---------------- */
@@ -682,4 +696,10 @@
       window.print();
     }
   });
+
+  /* ---------------- GeoCity autocomplete initialization ---------------- */
+  if (typeof GeoCity !== 'undefined') {
+    GeoCity.attach('b_place', 'b_lat', 'b_lon', 'b_tz');
+    GeoCity.attach('g_place', 'g_lat', 'g_lon', 'g_tz');
+  }
 })();

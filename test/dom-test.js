@@ -8,7 +8,7 @@ const { JSDOM } = require('jsdom');
 const root = path.join(__dirname, '..');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 
-const scripts = ['astro-core', 'bphs', 'bhava-indications', 'kp', 'koota', 'dasha', 'transit', 'timeline', 'health', 'sarvashtaka', 'manual', 'app']
+const scripts = ['astro-core', 'bphs', 'bhava-indications', 'kp', 'koota', 'dasha', 'transit', 'timeline', 'health', 'sarvashtaka', 'chart-draw', 'geocity', 'manual', 'app']
   .map((n) => fs.readFileSync(path.join(root, 'js', n + '.js'), 'utf8'));
 
 // strip the <script src> tags so jsdom doesn't try to fetch; we inject manually
@@ -44,7 +44,7 @@ try {
 
 // verify tabs populated
 const checks = [
-  ['tab-charts', 'Planetary Chart'],
+  ['tab-charts', 'D1'],
   ['tab-bhava', 'House-by-House Matching'],
   ['tab-bphs', 'BPHS Marriage Assessment'],
   ['tab-kp', '7th cusp sub-lord'],
