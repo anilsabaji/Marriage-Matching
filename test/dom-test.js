@@ -8,7 +8,7 @@ const { JSDOM } = require('jsdom');
 const root = path.join(__dirname, '..');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 
-const scripts = ['astro-core', 'bphs', 'bhava-indications', 'kp', 'koota', 'dasha', 'transit', 'timeline', 'health', 'manual', 'app']
+const scripts = ['astro-core', 'bphs', 'bhava-indications', 'kp', 'koota', 'dasha', 'transit', 'timeline', 'health', 'sarvashtaka', 'manual', 'app']
   .map((n) => fs.readFileSync(path.join(root, 'js', n + '.js'), 'utf8'));
 
 // strip the <script src> tags so jsdom doesn't try to fetch; we inject manually
@@ -53,6 +53,7 @@ const checks = [
   ['tab-forecast', '20-Year Relationship'],
   ['tab-transit', 'Gochara'],
   ['tab-health', 'Health Compatibility Screener'],
+  ['tab-sarvashtaka', 'Sarvashtakavarga'],
   ['tab-manual', 'Technical Manual'],
   ['report-content', 'Marriage Compatibility Report'],
   ['summaryContent', '/100'],

@@ -92,6 +92,7 @@
     r.kpB = KP.assess(boy); r.kpG = KP.assess(girl);
     r.transitB = Transit.summary(boy, state.fromJd, 20);
     r.transitG = Transit.summary(girl, state.fromJd, 20);
+    r.sarvashtaka = Sarvashtaka.coupleAnalysis(boy, girl);
     state.results = r;
 
     const safeRender = (fn, name) => { try { fn(); } catch(e) { console.warn(name + ' render error:', e); } };
@@ -105,6 +106,7 @@
     safeRender(renderForecast, 'Forecast');
     safeRender(renderTransit, 'Transit');
     safeRender(renderHealth, 'Health');
+    safeRender(renderSarvashtaka, 'Sarvashtaka');
     safeRender(renderReport, 'Report');
   }
 
@@ -143,6 +145,7 @@
         <div class="card" style="margin:0">
           ${gaugePct('KP promise confidence', r.kp.combined)}
           ${gaugePct('Health compatibility', r.health.score)}
+          ${gaugePct('Sarvashtakavarga (SAV)', r.sarvashtaka.score)}
           <div class="kv"><span>Nearest marriage window</span><span>${esc(r.window.nearestRange)}</span></div>
         </div>
       </div>
@@ -495,6 +498,123 @@
   /* ---------------- Manual ---------------- */
   $('tab-manual').innerHTML = `<div class="card">${Manual.html()}</div>`;
 
+  /* ---------------- Sarvashtakavarga ---------------- */
+  function renderSarvashtaka() {
+    const r = state.results;
+    const sa = r.sarvashtaka;
+
+    // Full SAV table (all 12 houses, boy vs girl)
+    let compRows = '';
+    sa.comparison.forEach((c) => {
+      const cls = c.harmony.cls;
+      compRows += `<tr class="band-${cls}">
+        <td><b>${c.house}</b></td>
+        <td class="num">${c.boyBindus}</td>
+        <td class="num">${c.girlBindus}</td>
+        <td class="num">${c.avg}</td>
+        <td>${chip(c.harmony.label, c.harmony.cls)}</td>
+      </tr>`;
+    });
+
+    // Marriage houses detail
+    let marriageRows = '';
+    sa.marriageComparison.forEach((m) => {
+      marriageRows += `<tr>
+        <td><b>H${m.house}</b> <span class="muted small">(${esc(Sarvashtaka.coupleAnalysis === undefined ? '' : houseLabel2(m.house))})</span></td>
+        <td>${esc(m.signBoy)}</td>
+        <td class="num">${m.boyBindus} ${chip(m.boyQuality.label, m.boyQuality.cls)}</td>
+        <td>${esc(m.signGirl)}</td>
+        <td class="num">${m.girlBindus} ${chip(m.girlQuality.label, m.girlQuality.cls)}</td>
+        <td class="num"><b>${m.avg}</b></td>
+      </tr>`;
+    });
+
+    // BAV grid for boy (7 planets x 12 houses)
+    function bavGrid(data, name) {
+      let header = '<th>' + name + '</th>';
+      for (let h = 1; h <= 12; h++) header += `<th class="num">H${h}</th>`;
+      header += '<th class="num">Total</th>';
+      let rows = '';
+      Sarvashtaka.PLANETS_7.forEach((p) => {
+        const bavRow = data.houseBavs[p];
+        const total = bavRow.reduce((s, v) => s + v, 0);
+        rows += '<tr><td><b>' + p + '</b></td>';
+        bavRow.forEach((v) => {
+          const cls = v >= 5 ? 'pass' : v <= 2 ? 'fail' : '';
+          rows += `<td class="num ${cls}">${v}</td>`;
+        });
+        rows += `<td class="num"><b>${total}</b></td></tr>`;
+      });
+      // SAV totals row
+      rows += '<tr style="border-top:2px solid var(--border)"><td><b>SAV</b></td>';
+      data.houses.forEach((h) => {
+        const cls = h.bindus >= 28 ? 'pass' : h.bindus < 25 ? 'fail' : '';
+        rows += `<td class="num ${cls}"><b>${h.bindus}</b></td>`;
+      });
+      rows += `<td class="num"><b>${data.total}</b></td></tr>`;
+      return `<table class="bav-table"><thead><tr>${header}</tr></thead><tbody>${rows}</tbody></table>`;
+    }
+
+    $('tab-sarvashtaka').innerHTML = `
+      <div class="card">
+        <h2>Sarvashtakavarga (SAV) Analysis</h2>
+        <div style="margin:6px 0">${chip(sa.verdict.label, sa.verdict.cls)} &nbsp; Compatibility Score <b>${sa.score}/100</b></div>
+        ${gaugePct('SAV Marriage Compatibility', sa.score)}
+        <div class="grid-2" style="margin-top:12px">
+          <div class="kv"><span>Groom total SAV bindus</span><span><b>${sa.boy.houseSAV.total}</b></span></div>
+          <div class="kv"><span>Bride total SAV bindus</span><span><b>${sa.girl.houseSAV.total}</b></span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Marriage Houses — SAV Comparison</h3>
+        <p class="small muted">Houses 7 (spouse), 2 (family), 11 (gains), 5 (romance) and 8 (intimacy) evaluated.
+          Bindus ≥ 28 = Strong, 25–27 = Moderate, &lt; 25 = Weak.</p>
+        <table>
+          <thead><tr><th>House</th><th>Boy Sign</th><th class="num">Boy Bindus</th><th>Girl Sign</th><th class="num">Girl Bindus</th><th class="num">Avg</th></tr></thead>
+          <tbody>${marriageRows}</tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h3>Full House-by-House SAV Comparison</h3>
+        <table>
+          <thead><tr><th>House</th><th class="num">Boy Bindus</th><th class="num">Girl Bindus</th><th class="num">Average</th><th>Harmony</th></tr></thead>
+          <tbody>${compRows}</tbody>
+        </table>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>Groom — Bhinnashtakavarga (BAV) Grid</h3>
+          <p class="small muted">Bindus per planet per house. Green ≥ 5 (strong), Red ≤ 2 (weak).</p>
+          ${bavGrid(sa.boy.houseSAV, 'Planet')}
+        </div>
+        <div class="card">
+          <h3>Bride — Bhinnashtakavarga (BAV) Grid</h3>
+          <p class="small muted">Bindus per planet per house. Green ≥ 5 (strong), Red ≤ 2 (weak).</p>
+          ${bavGrid(sa.girl.houseSAV, 'Planet')}
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Interpretation &amp; Notes</h3>
+        ${sa.notes.map((n) => `<p class="small">• ${esc(n)}</p>`).join('')}
+      </div>
+
+      <div class="callout small">
+        <b>About Sarvashtakavarga:</b> The Ashtakavarga system (BPHS Ch. 66–72) assigns benefic points (bindus)
+        from each of the 7 planets and the Lagna to every sign. The SAV is the aggregate — signs with more bindus
+        indicate stronger results for that life area. For marriage, high bindus in the 7th house (marriage), 2nd
+        (family), 11th (fulfilment), 5th (romance/children), and Venus's BAV in the 7th are especially significant.
+      </div>`;
+  }
+
+  function houseLabel2(h) {
+    const labels = { 2: 'Family/Wealth', 5: 'Romance/Children', 7: 'Marriage/Spouse', 8: 'Intimacy/Longevity', 11: 'Fulfilment/Gains' };
+    return labels[h] || '';
+  }
+
   /* ---------------- Report (PDF) ---------------- */
   function renderReport() {
     const r = state.results;
@@ -515,6 +635,7 @@
           <tr><td>BPHS marriage index</td><td>${r.bphs.combined}/100 — ${r.bphs.verdict.label}</td></tr>
           <tr><td>KP promise confidence</td><td>${r.kp.combined}% — ${r.kp.verdict.label}</td></tr>
           <tr><td>Health compatibility</td><td>${r.health.score}/100 — ${r.health.verdict.label}</td></tr>
+          <tr><td>Sarvashtakavarga (SAV)</td><td>${r.sarvashtaka.score}/100 — ${r.sarvashtaka.verdict.label}</td></tr>
           <tr><td>Nearest marriage window</td><td>${esc(r.window.nearestRange)}</td></tr>
           ${r.koota.ashtakoota.doshas.length ? `<tr><td>Dosha alerts</td><td>${r.koota.ashtakoota.doshas.join(', ')}</td></tr>` : ''}
         </table>

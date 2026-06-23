@@ -133,6 +133,22 @@ const Manual = (function () {
       pipeline (and, when available, the bundled html-to-PDF helper) so it can be saved
       as a PDF or printed directly. Use the "Open print dialog" button on that tab.</p>
 
+      <h3>11. Sarvashtakavarga (SAV)</h3>
+      <p>The Ashtakavarga system (BPHS chapters 66–72) quantifies planetary strength
+      house-by-house. For each of the 7 planets, an 8-fold contribution rule (from
+      7 planets + Lagna) assigns <em>bindus</em> (benefic points) to each of the 12
+      signs. Summing all 7 individual tables (Bhinnashtakavarga / BAV) yields the
+      <b>Sarvashtakavarga (SAV)</b> — typically totalling ~337 bindus across the zodiac.</p>
+      <ul>
+        <li><b>Marriage houses scored:</b> 7th (spouse), 2nd (family), 11th (fulfilment),
+            5th (romance/children), 8th (intimacy/longevity).</li>
+        <li><b>Thresholds:</b> SAV ≥ 28 in a house = Strong; 25–27 = Moderate; &lt; 25 = Weak.</li>
+        <li><b>Special indicators:</b> Venus BAV in the 7th (marital happiness), Jupiter BAV
+            in the 2nd and 11th (family harmony &amp; wish-fulfilment).</li>
+        <li><b>Couple comparison:</b> balanced total SAV (difference ≤ 10) indicates energetic
+            compatibility; both strong in the same marriage houses is highly favourable.</li>
+      </ul>
+
       <h3>11. References</h3>
       <ul>
         <li>Maharṣi Parāśara — <i>Bṛhat Parāśara Horā Śāstra</i> (BPHS).</li>

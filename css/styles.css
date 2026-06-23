@@ -367,3 +367,9 @@ td.num, th.num { text-align: right; }
 .bhava-factors { margin-top: 6px; }
 .bhava-factors p { margin: 3px 0; }
 
+/* BAV table */
+.bav-table { font-size: 11.5px; }
+.bav-table th, .bav-table td { padding: 5px 6px; text-align: center; }
+.bav-table td.pass { color: var(--good); font-weight: 700; }
+.bav-table td.fail { color: var(--bad); font-weight: 700; }
+
