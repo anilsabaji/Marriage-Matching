@@ -93,6 +93,7 @@
     r.transitB = Transit.summary(boy, state.fromJd, 20);
     r.transitG = Transit.summary(girl, state.fromJd, 20);
     r.sarvashtaka = Sarvashtaka.coupleAnalysis(boy, girl);
+    r.strengthSeries = Timeline.strengthSeries(boy, girl, state.fromJd, 20, 3);
     state.results = r;
 
     const safeRender = (fn, name) => { try { fn(); } catch(e) { console.warn(name + ' render error:', e); } };
@@ -557,6 +558,18 @@
     });
     $('tab-forecast').innerHTML = `
       <div class="card">
+        <h2>Relationship Strength Over 20 Years — Commitment Graph</h2>
+        <p class="small muted">Time runs left → right along the centre line. <b style="color:#4dc9ff">${esc(state.boy.meta.name)} (Groom)</b>'s
+          commitment to the marriage is drawn <b>above</b> the centre line; <b style="color:#ff7eb3">${esc(state.girl.meta.name)} (Bride)</b>'s
+          is drawn <b>below</b>. The band between them forms a "pipe" — wide where both are strongly committed, narrow where
+          commitment weakens. Dots on the centre line each year show whose commitment leads (blue = groom, pink = bride).</p>
+        ${typeof ChartDraw !== 'undefined' && r.strengthSeries ? ChartDraw.relationshipPipe(r.strengthSeries, { boyName: state.boy.meta.name, girlName: state.girl.meta.name }) : ''}
+        <div class="legend-line">
+          <span class="dot" style="background:#4dc9ff"></span>${esc(state.boy.meta.name)} (Groom) — above centre &nbsp;&nbsp;
+          <span class="dot" style="background:#ff7eb3"></span>${esc(state.girl.meta.name)} (Bride) — below centre
+        </div>
+      </div>
+      <div class="card">
         <h2>20-Year Relationship Strength &amp; Weakness Forecast</h2>
         <p class="small muted">Period-by-period (Mahādaśā / Antardaśā / Pratyantardaśā) outlook for the union,
           combining both partners' dasha favourability with concurrent planetary transits. Strength on 0–100.</p>
@@ -792,7 +805,7 @@
       ${section('9 · Health Compatibility', 'health')}
       ${section('10 · Sarvashtakavarga (SAV)', 'sarvashtaka')}
 
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v4.6</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v4.8</p>
       <p class="dev-credit footer-credit">Developed by <b>Dr. Anil Sabaji</b> &nbsp;•&nbsp; Email: anilsabaji@gmail.com</p>
     `;
   }
@@ -864,13 +877,14 @@ body { padding: 24px; max-width: 1000px; margin: 0 auto; }
 <header class="app-header" style="border-radius:14px;margin-bottom:18px">
   <h1><span class="om">&#x0950;</span> Vedic Marriage Matching Report</h1>
   <p>${boyName} &amp; ${girlName}</p>
+  <p class="dev-credit">By <b>Dr. Anil Sabaji</b>, Email: <a href="mailto:anilsabaji@gmail.com">anilsabaji@gmail.com</a></p>
 </header>
 <div class="report-meta">Generated ${esc(dateStr)} — Vedic Marriage Matching Module (BPHS &amp; KP)</div>
 <div id="report-content">${reportHtml}</div>
 <p class="footer-note" style="text-align:center;margin-top:24px;opacity:.7;font-size:11.5px">
-  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v4.6
+  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v4.8
 </p>
-<p class="dev-credit footer-credit">Developed by <b>Dr. Anil Sabaji</b> &nbsp;•&nbsp; Email: anilsabaji@gmail.com</p>
+<p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>
 </body>
 </html>`;
 

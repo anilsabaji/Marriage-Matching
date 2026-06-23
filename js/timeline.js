@@ -129,6 +129,46 @@ const Timeline = (function () {
     return val;
   }
 
+  // Evenly-sampled commitment-strength time series for both partners.
+  // Returns array of { jd, m (months from start), year (calendar), label,
+  // boy (0-100), girl (0-100) } sampled every `stepMonths`.
+  function strengthSeries(boyChart, girlChart, fromJd, years, stepMonths) {
+    years = years || 20;
+    stepMonths = stepMonths || 3;
+    const bmp = marriagePlanets(boyChart, 'male');
+    const bsp = stressPlanets(boyChart);
+    const gmp = marriagePlanets(girlChart, 'female');
+    const gsp = stressPlanets(girlChart);
+    const bMd = Dasha.mahadashas(boyChart, years + 130);
+    const gMd = Dasha.mahadashas(girlChart, years + 130);
+    const series = [];
+    const totalMonths = years * 12;
+    const MONTH = 30.436875;
+    for (let m = 0; m <= totalMonths; m += stepMonths) {
+      const jd = fromJd + m * MONTH;
+      const boy = clamp(scoreAtMd(boyChart, bmp, bsp, jd, bMd));
+      const girl = clamp(scoreAtMd(girlChart, gmp, gsp, jd, gMd));
+      const d = Dasha.jdToDate(jd);
+      series.push({
+        jd, m,
+        year: d.getUTCFullYear(),
+        label: Dasha.fmtYM(jd),
+        boy, girl,
+      });
+    }
+    return series;
+  }
+
+  // scoreAt variant that reuses a precomputed Mahadasha list (faster for series)
+  function scoreAtMd(chart, mp, sp, jd, mdList) {
+    const r = Dasha.runningAt(chart, jd, mdList);
+    if (!r || !r.ad) return 0;
+    const f = (lord) => (mp.weights[lord] || 0) - (sp[lord] || 0) * 0.8;
+    let val = f(r.md.lord) * 0.45 + f(r.ad.lord) * 0.35 + (r.pd ? f(r.pd.lord) * 0.2 : 0);
+    val += Transit.evaluate(chart, jd).score * 0.25;
+    return val;
+  }
+
   // 20-year relationship strength / weakness forecast (period rows)
   function relationshipForecast(boyChart, girlChart, fromJd, years) {
     years = years || 20;
@@ -187,7 +227,7 @@ const Timeline = (function () {
 
   return {
     marriagePlanets, stressPlanets, marriageWindow,
-    coupleMarriageWindow, relationshipForecast, scoreAt, band, clamp,
+    coupleMarriageWindow, relationshipForecast, strengthSeries, scoreAt, band, clamp,
   };
 })();
 
