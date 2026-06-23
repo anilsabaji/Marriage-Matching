@@ -385,6 +385,8 @@ td.num, th.num { text-align: right; }
 .pdf-render .kv span:last-child { color: #1a1a1a !important; }
 .pdf-render .dev-credit { color: #5b3fb0 !important; }
 .pdf-render .dev-credit b { color: #5b3fb0 !important; }
+.pdf-render .pipe-svg { background: #f7f7fb !important; border-color: #ccc !important; }
+.pdf-render .pipe-svg .pipe-axis, .pdf-render .pipe-svg .pipe-axis-sub { fill: #555 !important; }
 
 /* Bhava house-by-house comparison */
 .bhava-house-card { margin-bottom: 22px; }
@@ -483,4 +485,12 @@ td.num, th.num { text-align: right; }
 .chart-svg .chart-title { fill: var(--accent); font-size: 11px; font-weight: 700; font-family: inherit; }
 .chart-svg .chart-sign { fill: var(--accent-4); font-size: 9px; font-weight: 600; font-family: inherit; }
 .chart-svg .chart-planet { fill: var(--text); font-size: 10px; font-weight: 600; font-family: inherit; }
+
+/* Relationship pipe graph */
+.pipe-svg { background: rgba(8,10,24,.5); border: 1px solid var(--border); border-radius: 12px; margin: 10px 0; }
+.pipe-svg .pipe-axis { fill: var(--muted); font-size: 11px; font-family: inherit; font-weight: 600; }
+.pipe-svg .pipe-axis-sub { fill: var(--muted); font-size: 9px; font-family: inherit; opacity: .8; }
+.pipe-svg .pipe-side { font-size: 11px; font-weight: 700; font-family: inherit; }
+.pipe-svg .boy-side { fill: #4dc9ff; }
+.pipe-svg .girl-side { fill: #ff7eb3; }
 

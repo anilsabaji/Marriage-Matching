@@ -209,7 +209,104 @@ const ChartDraw = (function () {
       </div>`;
   }
 
-  return { svgChart, d1Chart, d9Chart, kpChart, navamsaSign, renderTriple, SIGN_ABBR, PLANET_ABBR, SI_GRID, SIGN_POS };
+  /* ======================================================================
+   * Relationship strength "pipe" graph
+   * Center line = time axis. Boy's commitment plotted ABOVE the center,
+   * Girl's BELOW. The band between the two lines forms a hollow pipe of
+   * varying diameter. Colour indicates whose commitment leads at each time.
+   * series: [{ jd, m, year, label, boy(0-100), girl(0-100) }]
+   * ==================================================================== */
+  function relationshipPipe(series, opts) {
+    opts = opts || {};
+    const boyName = escSvg(opts.boyName || 'Groom');
+    const girlName = escSvg(opts.girlName || 'Bride');
+    const W = 1000, H = 400;
+    const padL = 54, padR = 18, padT = 30, padB = 52;
+    const plotW = W - padL - padR;
+    const plotH = H - padT - padB;
+    const cy = padT + plotH / 2;
+    const maxAmp = plotH / 2 - 6;
+    const n = series.length;
+    if (n < 2) return '<div class="muted small">Not enough data to plot.</div>';
+
+    const totalM = series[n - 1].m || 1;
+    const xOfM = (m) => padL + (m / totalM) * plotW;
+    const x = (i) => xOfM(series[i].m);
+    const boyY = (v) => cy - (v / 100) * maxAmp;
+    const girlY = (v) => cy + (v / 100) * maxAmp;
+
+    const boyPts = series.map((s, i) => `${x(i).toFixed(1)},${boyY(s.boy).toFixed(1)}`).join(' ');
+    const girlPts = series.map((s, i) => `${x(i).toFixed(1)},${girlY(s.girl).toFixed(1)}`).join(' ');
+
+    // filled areas (center to each line)
+    const boyArea = `${padL},${cy} ${boyPts} ${x(n - 1).toFixed(1)},${cy}`;
+    const girlArea = `${padL},${cy} ${girlPts} ${x(n - 1).toFixed(1)},${cy}`;
+
+    let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet" class="pipe-svg" xmlns="http://www.w3.org/2000/svg">`;
+
+    // defs gradients
+    svg += `<defs>
+      <linearGradient id="boyGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#4dc9ff" stop-opacity="0.55"/>
+        <stop offset="100%" stop-color="#4dc9ff" stop-opacity="0.08"/>
+      </linearGradient>
+      <linearGradient id="girlGrad" x1="0" y1="1" x2="0" y2="0">
+        <stop offset="0%" stop-color="#ff7eb3" stop-opacity="0.55"/>
+        <stop offset="100%" stop-color="#ff7eb3" stop-opacity="0.08"/>
+      </linearGradient>
+    </defs>`;
+
+    // background grid lines (horizontal strength guides)
+    [0.5, 1].forEach((f) => {
+      const yUp = cy - f * maxAmp, yDn = cy + f * maxAmp;
+      svg += `<line x1="${padL}" y1="${yUp.toFixed(1)}" x2="${padL + plotW}" y2="${yUp.toFixed(1)}" stroke="#2a3060" stroke-width="0.5" stroke-dasharray="3 4"/>`;
+      svg += `<line x1="${padL}" y1="${yDn.toFixed(1)}" x2="${padL + plotW}" y2="${yDn.toFixed(1)}" stroke="#2a3060" stroke-width="0.5" stroke-dasharray="3 4"/>`;
+    });
+
+    // year gridlines + labels along the bottom and ticks on center line
+    const baseYear = series[0].year;
+    const years = Math.round(totalM / 12);
+    const stepYear = years > 12 ? 2 : 1;
+    for (let yr = 0; yr <= years; yr += stepYear) {
+      const xm = xOfM(yr * 12);
+      svg += `<line x1="${xm.toFixed(1)}" y1="${padT}" x2="${xm.toFixed(1)}" y2="${padT + plotH}" stroke="#222845" stroke-width="0.5"/>`;
+      svg += `<text x="${xm.toFixed(1)}" y="${(padT + plotH + 18).toFixed(1)}" text-anchor="middle" class="pipe-axis">${baseYear + yr}</text>`;
+      svg += `<text x="${xm.toFixed(1)}" y="${(padT + plotH + 32).toFixed(1)}" text-anchor="middle" class="pipe-axis-sub">+${yr}y</text>`;
+    }
+
+    // filled pipe areas
+    svg += `<polygon points="${boyArea}" fill="url(#boyGrad)" stroke="none"/>`;
+    svg += `<polygon points="${girlArea}" fill="url(#girlGrad)" stroke="none"/>`;
+
+    // boy & girl outline lines
+    svg += `<polyline points="${boyPts}" fill="none" stroke="#4dc9ff" stroke-width="2.4" stroke-linejoin="round"/>`;
+    svg += `<polyline points="${girlPts}" fill="none" stroke="#ff7eb3" stroke-width="2.4" stroke-linejoin="round"/>`;
+
+    // center time line (drawn over fills)
+    svg += `<line x1="${padL}" y1="${cy}" x2="${padL + plotW}" y2="${cy}" stroke="#e7e9ee" stroke-width="1.5"/>`;
+
+    // dominance dots on the center line at each year: who leads that year
+    for (let yr = 0; yr <= years; yr += 1) {
+      const m = yr * 12;
+      // find nearest sample
+      let near = series[0];
+      for (let i = 0; i < n; i++) { if (Math.abs(series[i].m - m) < Math.abs(near.m - m)) near = series[i]; }
+      const lead = near.boy >= near.girl ? '#4dc9ff' : '#ff7eb3';
+      const xm = xOfM(m);
+      svg += `<circle cx="${xm.toFixed(1)}" cy="${cy}" r="2.6" fill="${lead}"/>`;
+    }
+
+    // axis side labels
+    svg += `<text x="${padL - 8}" y="${(padT + 12).toFixed(1)}" text-anchor="end" class="pipe-side boy-side">${boyName} ▲</text>`;
+    svg += `<text x="${padL - 8}" y="${(padT + plotH).toFixed(1)}" text-anchor="end" class="pipe-side girl-side">${girlName} ▼</text>`;
+    svg += `<text x="${padL - 8}" y="${(cy + 3).toFixed(1)}" text-anchor="end" class="pipe-axis-sub">weak</text>`;
+    svg += `<text x="${padL - 8}" y="${(padT - 6).toFixed(1)}" text-anchor="end" class="pipe-axis-sub">strong</text>`;
+
+    svg += '</svg>';
+    return svg;
+  }
+
+  return { svgChart, d1Chart, d9Chart, kpChart, navamsaSign, renderTriple, relationshipPipe, SIGN_ABBR, PLANET_ABBR, SI_GRID, SIGN_POS };
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = ChartDraw;
