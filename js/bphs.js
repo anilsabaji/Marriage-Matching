@@ -1,521 +1,207 @@
-/**
- * BPHS.js - Brihat Parashara Hora Shastra Analysis
- * Implements house significations, planet-in-house analysis,
- * house lordship analysis, and marriage-relevant yogas
- */
-var BPHS = (function() {
-    'use strict';
+/* =============================================================================
+ * bphs.js  —  Brihat Parashara Hora Shastra (BPHS) Bhava analysis
+ *
+ * Tabulates the significations of all 12 Bhavas for a chart, computes a
+ * strength score per bhava (placement, lordship dignity, occupants, aspects),
+ * and produces a marriage-focused assessment from the 7th, 2nd, 11th, 5th and
+ * 8th houses plus the karaka Venus (for males) / Jupiter (for females).
+ * ========================================================================== */
 
-    // ===== House Significations per BPHS =====
-    var HOUSE_SIGNIFICATIONS = {
-        1: {
-            name: 'Lagna (Ascendant)',
-            keywords: ['Self', 'Personality', 'Health', 'Physical appearance', 'Vitality', 'Temperament'],
-            marriage: 'Indicates the native\'s personality and how they present in relationships. Strong 1st lord supports a healthy marriage.'
-        },
-        2: {
-            name: 'Dhana (Wealth)',
-            keywords: ['Wealth', 'Family', 'Speech', 'Food habits', 'Face', 'Right eye'],
-            marriage: 'Represents family life after marriage (kutumba). A strong 2nd house ensures harmonious family relations and financial stability in marriage.'
-        },
-        3: {
-            name: 'Sahaja (Siblings)',
-            keywords: ['Siblings', 'Courage', 'Communication', 'Short journeys', 'Efforts', 'Neighbors'],
-            marriage: 'Shows courage and communication in relationships. Good 3rd house supports healthy dialogue between partners.'
-        },
-        4: {
-            name: 'Sukha (Happiness)',
-            keywords: ['Mother', 'Property', 'Happiness', 'Education', 'Vehicles', 'Domestic peace'],
-            marriage: 'Indicates domestic happiness and comfort in married life. Strong 4th house gives a peaceful home environment.'
-        },
-        5: {
-            name: 'Putra (Children)',
-            keywords: ['Children', 'Intelligence', 'Romance', 'Creativity', 'Past merit', 'Speculation'],
-            marriage: 'Represents romance, love affairs, and children. Critical for assessing romantic compatibility and progeny.'
-        },
-        6: {
-            name: 'Ripu (Enemies)',
-            keywords: ['Enemies', 'Disease', 'Debt', 'Service', 'Obstacles', 'Maternal uncle'],
-            marriage: 'Indicates obstacles and conflicts in marriage. Afflictions here can cause disputes and separation tendencies.'
-        },
-        7: {
-            name: 'Kalatra (Spouse)',
-            keywords: ['Spouse', 'Marriage', 'Partnerships', 'Business', 'Foreign travel', 'Public dealings'],
-            marriage: 'The primary house of marriage and spouse. Its lord, occupants, and aspects determine marriage quality, timing, and partner characteristics.'
-        },
-        8: {
-            name: 'Ayu (Longevity)',
-            keywords: ['Longevity', 'Transformation', 'Occult', 'Inheritance', 'Sudden events', 'Mangalya'],
-            marriage: 'Represents mangalya (marital longevity), in-laws\' wealth, and transformative experiences in marriage. 8th from 7th is the 2nd house.'
-        },
-        9: {
-            name: 'Dharma (Fortune)',
-            keywords: ['Fortune', 'Dharma', 'Father', 'Guru', 'Long journeys', 'Higher learning'],
-            marriage: 'Indicates fortune and dharmic alignment in marriage. 9th house strength shows blessings and spiritual compatibility.'
-        },
-        10: {
-            name: 'Karma (Career)',
-            keywords: ['Career', 'Status', 'Authority', 'Government', 'Father', 'Public image'],
-            marriage: 'Shows how marriage affects career and social standing. Connections between 7th and 10th indicate marriage through profession.'
-        },
-        11: {
-            name: 'Labha (Gains)',
-            keywords: ['Gains', 'Friends', 'Desires', 'Income', 'Elder siblings', 'Fulfillment'],
-            marriage: 'Represents fulfillment of desires including marriage. 11th house activation is essential for marriage materialization.'
-        },
-        12: {
-            name: 'Vyaya (Losses)',
-            keywords: ['Losses', 'Moksha', 'Foreign lands', 'Bed pleasures', 'Expenditure', 'Isolation'],
-            marriage: 'Represents bed pleasures (sexual compatibility) and losses. Strong 12th with benefics gives good conjugal life.'
-        }
-    };
+const BPHS = (function () {
+  'use strict';
 
-    // ===== Planet Effects in Each House (Marriage Context) =====
-    var PLANET_IN_HOUSE_MARRIAGE = {
-        Sun: {
-            1: 'Strong personality; may dominate in relationships. Leadership qualities attract partners.',
-            2: 'Authoritative in family matters. Government or paternal wealth supports married life.',
-            3: 'Courageous and expressive. May have ego-driven communication issues.',
-            4: 'Desire for a grand home. May have differences with mother-in-law.',
-            5: 'Romantic and creative. May have issues with ego in love affairs.',
-            6: 'Can overcome marital obstacles through authority. Health consciousness.',
-            7: 'Spouse may be authoritative or from a respectable family. Late marriage possible.',
-            8: 'Challenges to marital longevity. Transformation through marriage.',
-            9: 'Dharmic approach to marriage. Father supportive of union.',
-            10: 'Career-oriented; may delay marriage for profession. Status through marriage.',
-            11: 'Gains through marriage. Influential social circle supports married life.',
-            12: 'Expenses through marriage. Spouse may be from foreign land.'
-        },
-        Moon: {
-            1: 'Emotional and nurturing partner. Attractive personality draws relationships.',
-            2: 'Emotional about family and finances. Fluctuating family income.',
-            3: 'Emotionally expressive. Good communication with partner.',
-            4: 'Deep attachment to home and mother. Domestic happiness through emotional connection.',
-            5: 'Romantic and emotionally creative. Strong desire for children.',
-            6: 'Emotional health issues. May attract dependent partners.',
-            7: 'Spouse is caring and emotional. Marriage brings emotional fulfillment.',
-            8: 'Emotional upheavals in marriage. Deep psychological bond with spouse.',
-            9: 'Emotional connection to spirituality. Mother-like care in marriage.',
-            10: 'Public image enhanced through marriage. Career fluctuations after marriage.',
-            11: 'Emotional gains through marriage. Many friends support marital life.',
-            12: 'Expenses on comforts. Good bed pleasures. Emotional isolation possible.'
-        },
-        Mars: {
-            1: 'Manglik dosha. Aggressive and passionate. Strong physical drive in marriage.',
-            2: 'Harsh speech may cause family discord. Financial aggression.',
-            3: 'Courageous and adventurous partner. Sibling-like dynamic with spouse.',
-            4: 'Disputes about property. May have a fiery domestic environment.',
-            5: 'Passionate romance. May have issues with children or impulsive love.',
-            6: 'Overcomes enemies and debts. Competitive nature in relationships.',
-            7: 'Manglik dosha (strongest). Passionate but potentially conflictual marriage.',
-            8: 'Manglik dosha. Danger to marital longevity. Intense transformations.',
-            9: 'Aggressive about beliefs. Father may oppose marriage.',
-            10: 'Career-driven; may neglect marriage. Professional success through energy.',
-            11: 'Gains through courage and initiative. Marriage desires fulfilled through effort.',
-            12: 'Expenses through aggression. Passionate bed pleasures. Foreign connections.'
-        },
-        Mercury: {
-            1: 'Communicative and youthful personality. Attracts intellectual partners.',
-            2: 'Good family communication. Wealth through intellect and trade.',
-            3: 'Excellent communication skills. Writing/media connections in marriage.',
-            4: 'Intellectual home environment. Education supports domestic happiness.',
-            5: 'Intelligent approach to romance. Good for children\'s education.',
-            6: 'Analytical approach to problems. Overcomes obstacles through intellect.',
-            7: 'Spouse is communicative and intellectual. Business partnerships successful.',
-            8: 'Research-oriented. May overanalyze marriage issues.',
-            9: 'Philosophical communication. Academic pursuits enhance marriage.',
-            10: 'Career in communication/trade. Professional networking aids marriage.',
-            11: 'Gains through communication and networking. Intellectual friend circle.',
-            12: 'May overthink losses. Writing/calculation work in isolation.'
-        },
-        Jupiter: {
-            1: 'Wise and generous personality. Attracts good marriage prospects.',
-            2: 'Wealth and wise speech. Strong family values support marriage.',
-            3: 'Wise counsel to siblings. Good-natured communication.',
-            4: 'Great domestic happiness. Education and wisdom in the home.',
-            5: 'Excellent for children and romance. Wise love and creative intelligence.',
-            6: 'Overcomes obstacles through wisdom. Health and debt management through knowledge.',
-            7: 'Excellent for marriage. Wise and dharmic spouse. Happy partnership.',
-            8: 'Long life. Spiritual transformation through marriage.',
-            9: 'Highly auspicious. Dharmic marriage with spiritual growth.',
-            10: 'Success and status. Marriage brings career advancement.',
-            11: 'Great gains and fulfillment. All desires including marriage are realized.',
-            12: 'Spiritual liberation. Generous spending. Good conjugal relations.'
-        },
-        Venus: {
-            1: 'Attractive and charming. Natural ability to attract relationships.',
-            2: 'Wealth and luxury. Beautiful speech and family harmony.',
-            3: 'Artistic communication. Younger siblings may help in marriage matters.',
-            4: 'Beautiful home and vehicles. Great domestic comfort and luxury.',
-            5: 'Excellent for romance and love. Creative and romantic personality.',
-            6: 'May attract problematic relationships initially. Overcomes through charm.',
-            7: 'Best placement for marriage. Beautiful, loving, and compatible spouse.',
-            8: 'Intense sexual bond. Wealth through marriage. Transformative love.',
-            9: 'Fortunate in love. Marriage brings spiritual and material growth.',
-            10: 'Career in arts/luxury. Marriage enhances public image.',
-            11: 'All desires fulfilled including marriage. Gains through spouse.',
-            12: 'Excellent bed pleasures. Luxury expenses. Foreign pleasures.'
-        },
-        Saturn: {
-            1: 'Serious and mature personality. Delayed marriage but lasting commitment.',
-            2: 'Financial restrictions early. Serious family values. Steady growth.',
-            3: 'Disciplined efforts. May have strained sibling relations.',
-            4: 'Delayed domestic happiness. Property matters take time.',
-            5: 'Delayed romance and children. Serious approach to love.',
-            6: 'Good for overcoming enemies and disease. Service-oriented.',
-            7: 'Delayed marriage. Older or mature spouse. Commitment-oriented union.',
-            8: 'Long life. Chronic issues in marriage. Deep karmic bond.',
-            9: 'Delayed fortune. Structured approach to dharma and beliefs.',
-            10: 'Excellent for career. Hard-working. Marriage may suffer due to work.',
-            11: 'Steady gains over time. Desires fulfilled through patience.',
-            12: 'Isolation and spiritual growth. Expenses on long-term investments.'
-        },
-        Rahu: {
-            1: 'Unconventional personality. Attracts unusual marriage situations.',
-            2: 'Obsession with wealth. Unconventional family dynamics.',
-            3: 'Bold and daring communication. Breaks traditional boundaries.',
-            4: 'Restlessness at home. Foreign property or unusual living.',
-            5: 'Unconventional romance. May have affairs or unusual love stories.',
-            6: 'Powerful over enemies. May attract unusual health issues.',
-            7: 'Unconventional marriage. Spouse may be from different culture/background.',
-            8: 'Intense transformations. Interest in occult. Sudden changes in marriage.',
-            9: 'Unconventional beliefs. Foreign connections in marriage.',
-            10: 'Ambitious career. Sudden rise. Marriage affected by ambition.',
-            11: 'Great gains through unconventional means. Desires fulfilled unexpectedly.',
-            12: 'Foreign settlement. Unusual expenses. Karmic patterns in marriage.'
-        },
-        Ketu: {
-            1: 'Spiritual and detached personality. May lack interest in worldly marriage.',
-            2: 'Detachment from family wealth. Spiritual speech.',
-            3: 'Courageous but detached. Past life skills in communication.',
-            4: 'Detachment from home comforts. Spiritual environment.',
-            5: 'Detachment from romance. Past life children karmas.',
-            6: 'Good for overcoming enemies spiritually. Unusual health patterns.',
-            7: 'Detachment in marriage. Spiritual partner. Past life marital karma.',
-            8: 'Deep spiritual transformation. Mystical experiences in marriage.',
-            9: 'Natural spiritual inclination. Guru-like approach to marriage.',
-            10: 'Detachment from career ambitions. Service-oriented work.',
-            11: 'Spiritual gains. Detachment from material desires.',
-            12: 'Excellent for moksha. Final liberation. Minimal worldly attachment.'
-        }
-    };
+  const BHAVA_SIGNIFICATIONS = {
+    1: { name: 'Tanu (Self)', themes: 'Body, personality, vitality, overall constitution, general disposition, head' },
+    2: { name: 'Dhana (Wealth/Family)', themes: 'Family, accumulated wealth, speech, food, early married/family life (kutumba), face' },
+    3: { name: 'Sahaja (Siblings)', themes: 'Courage, siblings, communication, short journeys, initiative, hands' },
+    4: { name: 'Sukha (Happiness)', themes: 'Home, mother, domestic comfort, property, vehicles, emotional foundation, heart' },
+    5: { name: 'Putra (Progeny)', themes: 'Children, romance, intelligence, love affairs, purva-punya, creativity, stomach' },
+    6: { name: 'Ari (Adversity)', themes: 'Disease, debts, enemies, conflicts, service, daily health, intestines' },
+    7: { name: 'Yuvati / Kalatra (Spouse)', themes: 'Marriage, spouse, partnerships, sexual union, public dealings — the prime house of marriage' },
+    8: { name: 'Ayur / Randhra (Longevity)', themes: 'Longevity, chronic ailments, in-laws wealth, transformation, marital intimacy & secrets, sudden events' },
+    9: { name: 'Dharma (Fortune)', themes: 'Luck, dharma, father, higher wisdom, long journeys, blessings on marriage' },
+    10: { name: 'Karma (Career)', themes: 'Profession, status, public life, authority, karma' },
+    11: { name: 'Labha (Gains)', themes: 'Gains, fulfilment of desires, friends, elder siblings — fructification of marriage prospects' },
+    12: { name: 'Vyaya (Loss/Liberation)', themes: 'Expenditure, bed-pleasures (shayya-sukha), foreign lands, losses, moksha, isolation' },
+  };
 
-    // ===== Marriage-Relevant Yogas =====
-    function findMarriageYogas(chart) {
-        var yogas = [];
-        var planets = chart.planets;
-        var houses = chart.houses.houses;
+  // houses central to marriage and their weight in the marriage index
+  const MARRIAGE_HOUSES = { 7: 3.0, 2: 1.5, 11: 1.5, 5: 1.0, 8: 1.0, 12: 0.8, 4: 0.6 };
 
-        // Helper: get lord of a house
-        function getHouseLord(houseNum) {
-            return houses[houseNum - 1].lord;
-        }
+  function dignity(planet, chart) {
+    const p = chart.planets[planet];
+    if (!p) return { label: 'n/a', score: 0 };
+    const sign = p.sign;
+    if (Astro.EXALT[planet] === sign) return { label: 'Exalted', score: 5 };
+    if (Astro.DEBIL[planet] === sign) return { label: 'Debilitated', score: -3 };
+    if ((Astro.OWN[planet] || []).includes(sign)) return { label: 'Own sign', score: 4 };
+    const lord = Astro.RASHI_LORD[sign];
+    const rel = Astro.relation(planet, lord);
+    if (rel === 'friend' || rel === 'self') return { label: 'Friendly sign', score: 2 };
+    if (rel === 'enemy') return { label: 'Enemy sign', score: -1 };
+    return { label: 'Neutral sign', score: 1 };
+  }
 
-        // Helper: get house of a planet
-        function getPlanetHouse(planetName) {
-            return planets[planetName].house;
-        }
+  // which planets occupy a given house number
+  function occupants(house, chart) {
+    return Astro.PLANETS.filter((p) => chart.planets[p].house === house);
+  }
 
-        // Helper: check if two planets are in same house
-        function inSameHouse(p1, p2) {
-            return getPlanetHouse(p1) === getPlanetHouse(p2);
-        }
+  // which planets aspect a given house (graha drishti, whole sign)
+  function aspectingPlanets(house, chart) {
+    const res = [];
+    Astro.PLANETS.forEach((p) => {
+      const from = chart.planets[p].house;
+      Astro.aspectsHouses(p).forEach((a) => {
+        const target = ((from - 1 + a - 1) % 12) + 1;
+        if (target === house) res.push(p);
+      });
+    });
+    return res;
+  }
 
-        // 1. Kalatra Yoga - 7th lord well placed
-        var lord7 = getHouseLord(7);
-        var lord7House = getPlanetHouse(lord7);
-        if (lord7House === 1 || lord7House === 2 || lord7House === 4 || lord7House === 5 ||
-            lord7House === 7 || lord7House === 9 || lord7House === 10 || lord7House === 11) {
-            yogas.push({
-                name: 'Kalatra Yoga',
-                description: '7th lord ' + lord7 + ' is well placed in house ' + lord7House + '. Indicates a good spouse and happy marriage.',
-                strength: 'Positive',
-                score: 8
-            });
-        }
+  // benefic / malefic nature (natural)
+  const NAT_BENEFIC = ['Jupiter', 'Venus', 'Mercury', 'Moon'];
+  const NAT_MALEFIC = ['Sun', 'Mars', 'Saturn', 'Rahu', 'Ketu'];
 
-        // 2. Venus in own sign or exalted
-        var venusRashi = planets.Venus.rashiIndex;
-        if (venusRashi === 1 || venusRashi === 6 || venusRashi === 11) {  // Taurus, Libra, Pisces (exalted)
-            yogas.push({
-                name: 'Shukra Bala Yoga',
-                description: 'Venus is strong in ' + planets.Venus.rashi + '. Indicates love, luxury, and marital happiness.',
-                strength: 'Positive',
-                score: 9
-            });
-        }
+  function bhavaStrength(house, chart) {
+    const sign = (chart.ascendant.sign + house - 1) % 12;
+    const lord = Astro.RASHI_LORD[sign];
+    const lordPlanet = chart.planets[lord];
+    let score = 50; // baseline (percent-like)
+    const factors = [];
 
-        // 3. Jupiter aspecting 7th house
-        var jupiterHouse = getPlanetHouse('Jupiter');
-        var jupiterAspects7 = (jupiterHouse === 1 || jupiterHouse === 3 || jupiterHouse === 5 ||
-                               jupiterHouse === 7 || jupiterHouse === 9 || jupiterHouse === 11);
-        if (jupiterAspects7) {
-            yogas.push({
-                name: 'Guru Drishti on 7th',
-                description: 'Jupiter aspects the 7th house from house ' + jupiterHouse + '. Blesses marriage with wisdom and dharma.',
-                strength: 'Positive',
-                score: 7
-            });
-        }
+    // 1. dignity of the lord
+    const dg = dignity(lord, chart);
+    score += dg.score * 4;
+    factors.push(`${house}th lord ${lord} is ${dg.label}`);
 
-        // 4. Venus-Jupiter conjunction or mutual aspect
-        if (inSameHouse('Venus', 'Jupiter')) {
-            yogas.push({
-                name: 'Venus-Jupiter Conjunction',
-                description: 'Venus and Jupiter together in house ' + getPlanetHouse('Venus') + '. Excellent for marriage and happiness.',
-                strength: 'Positive',
-                score: 9
-            });
-        }
+    // 2. lord placement house quality (kendra/trikona good, dusthana weak)
+    const lh = lordPlanet.house;
+    if ([1, 4, 7, 10].includes(lh)) { score += 6; factors.push(`lord in kendra (H${lh})`); }
+    if ([1, 5, 9].includes(lh)) { score += 6; factors.push(`lord in trikona (H${lh})`); }
+    if ([6, 8, 12].includes(lh)) { score -= 10; factors.push(`lord in dusthana (H${lh})`); }
 
-        // 5. 7th lord in 6th, 8th, or 12th (Kalatra Dosha)
-        if (lord7House === 6 || lord7House === 8 || lord7House === 12) {
-            yogas.push({
-                name: 'Kalatra Dosha',
-                description: '7th lord ' + lord7 + ' is in dusthana house ' + lord7House + '. May indicate challenges in marriage.',
-                strength: 'Negative',
-                score: -6
-            });
-        }
+    // 3. occupants
+    const occ = occupants(house, chart);
+    occ.forEach((o) => {
+      if (NAT_BENEFIC.includes(o)) { score += 5; factors.push(`benefic ${o} present`); }
+      else { score -= 4; factors.push(`malefic ${o} present`); }
+      const od = dignity(o, chart);
+      score += od.score * 1.5;
+    });
 
-        // 6. Manglik Dosha check
-        var marsHouse = getPlanetHouse('Mars');
-        if (marsHouse === 1 || marsHouse === 4 || marsHouse === 7 || marsHouse === 8 || marsHouse === 12) {
-            var cancellation = false;
-            // Check cancellations
-            if (marsHouse === 1 && houses[0].rashiIndex === 0) cancellation = true; // Mars in Aries ascendant
-            if (marsHouse === 4 && houses[3].rashiIndex === 3) cancellation = true; // Mars in own sign 4th
-            if (marsHouse === 7 && houses[6].rashiIndex === 0) cancellation = true; // Mars in Aries 7th
-            if (marsHouse === 8 && houses[7].rashiIndex === 7) cancellation = true; // Mars in Scorpio 8th
+    // 4. aspects
+    const asp = aspectingPlanets(house, chart);
+    asp.forEach((a) => {
+      if (NAT_BENEFIC.includes(a)) { score += 3; }
+      else { score -= 2; }
+    });
+    if (asp.length) factors.push(`aspected by ${asp.join(', ')}`);
 
-            if (!cancellation) {
-                yogas.push({
-                    name: 'Manglik Dosha',
-                    description: 'Mars in house ' + marsHouse + ' creates Manglik Dosha. Partner should also be Manglik or have cancellation.',
-                    strength: 'Negative',
-                    score: -5
-                });
-            } else {
-                yogas.push({
-                    name: 'Manglik Dosha (Cancelled)',
-                    description: 'Mars in house ' + marsHouse + ' but dosha is cancelled due to sign placement.',
-                    strength: 'Neutral',
-                    score: 0
-                });
-            }
-        }
+    // 5. retrograde lord adds unpredictability (mild)
+    if (lordPlanet.retro) { score -= 2; factors.push(`${lord} retrograde`); }
 
-        // 7. 2nd lord and 11th lord connection (family and gains through marriage)
-        var lord2 = getHouseLord(2);
-        var lord11 = getHouseLord(11);
-        if (inSameHouse(lord2, lord11) || getPlanetHouse(lord2) === 11 || getPlanetHouse(lord11) === 2) {
-            yogas.push({
-                name: 'Dhana-Labha Yoga',
-                description: '2nd lord (' + lord2 + ') and 11th lord (' + lord11 + ') are connected. Wealth and gains through marriage.',
-                strength: 'Positive',
-                score: 6
-            });
-        }
+    score = Math.max(2, Math.min(98, Math.round(score)));
+    return { house, sign, signName: Astro.RASHIS[sign], lord, lordHouse: lh,
+      lordDignity: dg.label, occupants: occ, aspects: asp, score, factors };
+  }
 
-        // 8. Saturn aspecting 7th (delay but stability)
-        var saturnHouse = getPlanetHouse('Saturn');
-        var saturnAspects7 = (saturnHouse === 1 || saturnHouse === 4 || saturnHouse === 5 || saturnHouse === 7);
-        if (saturnAspects7) {
-            yogas.push({
-                name: 'Saturn Aspect on 7th',
-                description: 'Saturn aspects 7th house from house ' + saturnHouse + '. May delay marriage but gives stability once married.',
-                strength: 'Mixed',
-                score: -2
-            });
-        }
-
-        // 9. Rahu in 7th (unconventional marriage)
-        if (getPlanetHouse('Rahu') === 7) {
-            yogas.push({
-                name: 'Rahu in 7th',
-                description: 'Rahu in 7th house indicates unconventional or inter-cultural marriage. Deception possible.',
-                strength: 'Mixed',
-                score: -3
-            });
-        }
-
-        // 10. 5th-7th lord connection (love marriage)
-        var lord5 = getHouseLord(5);
-        if (inSameHouse(lord5, lord7) || getPlanetHouse(lord5) === 7 || getPlanetHouse(lord7) === 5) {
-            yogas.push({
-                name: 'Love Marriage Yoga',
-                description: '5th lord (' + lord5 + ') and 7th lord (' + lord7 + ') are connected. Strong indication of love marriage.',
-                strength: 'Positive',
-                score: 7
-            });
-        }
-
-        // 11. Benefics in 7th house
-        var beneficsIn7 = [];
-        ['Jupiter', 'Venus', 'Mercury', 'Moon'].forEach(function(p) {
-            if (getPlanetHouse(p) === 7) beneficsIn7.push(p);
-        });
-        if (beneficsIn7.length > 0) {
-            yogas.push({
-                name: 'Benefics in 7th House',
-                description: beneficsIn7.join(', ') + ' in 7th house. Blesses marriage with harmony and happiness.',
-                strength: 'Positive',
-                score: 6
-            });
-        }
-
-        // 12. Malefics in 7th house (excluding Mars which is handled by Manglik)
-        var maleficsIn7 = [];
-        ['Saturn', 'Rahu', 'Ketu', 'Sun'].forEach(function(p) {
-            if (getPlanetHouse(p) === 7) maleficsIn7.push(p);
-        });
-        if (maleficsIn7.length > 0 && getPlanetHouse('Mars') !== 7) {
-            yogas.push({
-                name: 'Malefics in 7th House',
-                description: maleficsIn7.join(', ') + ' in 7th house. May cause difficulties and delays in marriage.',
-                strength: 'Negative',
-                score: -4
-            });
-        }
-
-        return yogas;
+  function analyzeAll(chart) {
+    const rows = [];
+    for (let h = 1; h <= 12; h++) {
+      const s = bhavaStrength(h, chart);
+      rows.push({
+        ...s,
+        significationName: BHAVA_SIGNIFICATIONS[h].name,
+        themes: BHAVA_SIGNIFICATIONS[h].themes,
+      });
     }
+    return rows;
+  }
 
-    // ===== House Lord Placement Analysis =====
-    function analyzeHouseLords(chart) {
-        var analysis = [];
-        var houses = chart.houses.houses;
-        var planets = chart.planets;
+  // Marriage-specific index for an individual chart (0-100)
+  function marriageIndex(chart, gender) {
+    const rows = analyzeAll(chart);
+    let weighted = 0, totalW = 0;
+    Object.keys(MARRIAGE_HOUSES).forEach((h) => {
+      const w = MARRIAGE_HOUSES[h];
+      const r = rows[parseInt(h, 10) - 1];
+      weighted += r.score * w;
+      totalW += w;
+    });
+    let base = weighted / totalW;
 
-        for (var h = 1; h <= 12; h++) {
-            var lord = houses[h - 1].lord;
-            var lordHouse = planets[lord].house;
-            var lordRashi = planets[lord].rashi;
-            var lordNakshatra = planets[lord].nakshatra;
+    // karaka: Venus for marriage (and for males primarily), Jupiter for females
+    const venus = dignity('Venus', chart);
+    const jup = dignity('Jupiter', chart);
+    const karaka = gender === 'female' ? jup : venus;
+    base += karaka.score * 2;
 
-            var marriageRelevance = '';
-            if (h === 7) {
-                marriageRelevance = 'CRITICAL: 7th lord placement directly determines marriage quality. ';
-                if (lordHouse === 1) marriageRelevance += 'Spouse devoted to native.';
-                else if (lordHouse === 2) marriageRelevance += 'Marriage brings family wealth.';
-                else if (lordHouse === 4) marriageRelevance += 'Domestic happiness through marriage.';
-                else if (lordHouse === 5) marriageRelevance += 'Love marriage or romantic partner.';
-                else if (lordHouse === 9) marriageRelevance += 'Fortunate marriage, dharmic partner.';
-                else if (lordHouse === 10) marriageRelevance += 'Marriage through profession.';
-                else if (lordHouse === 11) marriageRelevance += 'Marriage fulfills desires.';
-                else if (lordHouse === 6) marriageRelevance += 'Conflicts and opposition in marriage.';
-                else if (lordHouse === 8) marriageRelevance += 'Challenges to marital longevity.';
-                else if (lordHouse === 12) marriageRelevance += 'Expenses through marriage; foreign connection.';
-            } else if (h === 2 || h === 11) {
-                marriageRelevance = 'Supporting house for marriage materialization. Lord in house ' + lordHouse + '.';
-            } else if (h === 5) {
-                marriageRelevance = 'Romance house. Lord in house ' + lordHouse + ' shows romance patterns.';
-            }
+    // 7th lord & Venus afflicted by Mars/Saturn/Rahu in 7th?
+    const seventhOcc = occupants(7, chart);
+    let afflict = 0;
+    ['Mars', 'Saturn', 'Rahu', 'Ketu', 'Sun'].forEach((m) => {
+      if (seventhOcc.includes(m)) afflict += 1;
+    });
+    base -= afflict * 3;
 
-            analysis.push({
-                house: h,
-                houseName: HOUSE_SIGNIFICATIONS[h].name,
-                lord: lord,
-                lordHouse: lordHouse,
-                lordRashi: lordRashi,
-                lordNakshatra: lordNakshatra,
-                marriageRelevance: marriageRelevance
-            });
-        }
+    base = Math.max(5, Math.min(98, Math.round(base)));
 
-        return analysis;
-    }
-
-    // ===== Overall BPHS Compatibility Assessment =====
-    function assessCompatibility(boyChart, girlChart) {
-        var boyYogas = findMarriageYogas(boyChart);
-        var girlYogas = findMarriageYogas(girlChart);
-
-        var boyScore = 0;
-        var girlScore = 0;
-
-        boyYogas.forEach(function(y) { boyScore += y.score; });
-        girlYogas.forEach(function(y) { girlScore += y.score; });
-
-        // Normalize to percentage (max possible ~40, min possible ~-20)
-        var boyPct = Math.max(0, Math.min(100, ((boyScore + 20) / 60) * 100));
-        var girlPct = Math.max(0, Math.min(100, ((girlScore + 20) / 60) * 100));
-        var overallPct = (boyPct + girlPct) / 2;
-
-        // Cross-chart analysis
-        var crossFactors = [];
-
-        // Check if boy's 7th lord aspects girl's ascendant lord and vice versa
-        var boy7Lord = boyChart.houses.houses[6].lord;
-        var girl7Lord = girlChart.houses.houses[6].lord;
-
-        if (boy7Lord === girl7Lord) {
-            crossFactors.push({ factor: 'Same 7th house lord', effect: 'Strong karmic marriage bond.', score: 5 });
-        }
-
-        // Check Rashi exchange or mutual aspects of 7th lords
-        var boy7LordHouse = boyChart.planets[boy7Lord].house;
-        var girl7LordHouse = girlChart.planets[girl7Lord].house;
-
-        if (boy7LordHouse === 7 || girl7LordHouse === 7) {
-            crossFactors.push({ factor: '7th lord in own house', effect: 'Strong marriage promise.', score: 4 });
-        }
-
-        // Venus compatibility
-        var boyVenusRashi = boyChart.planets.Venus.rashiIndex;
-        var girlVenusRashi = girlChart.planets.Venus.rashiIndex;
-        if (boyVenusRashi === girlVenusRashi) {
-            crossFactors.push({ factor: 'Venus in same sign', effect: 'Similar romantic values and love expression.', score: 4 });
-        }
-
-        var crossScore = 0;
-        crossFactors.forEach(function(f) { crossScore += f.score; });
-        overallPct = Math.min(100, overallPct + crossScore);
-
-        var verdict = '';
-        if (overallPct >= 75) verdict = 'Excellent marriage compatibility. Strong BPHS indicators for a happy and lasting union.';
-        else if (overallPct >= 60) verdict = 'Good marriage compatibility. Positive indicators outweigh challenges.';
-        else if (overallPct >= 45) verdict = 'Moderate compatibility. Some challenges need attention but marriage can work with effort.';
-        else if (overallPct >= 30) verdict = 'Below average compatibility. Significant challenges indicated. Remedies recommended.';
-        else verdict = 'Challenging compatibility. Major obstacles indicated. Thorough analysis and remedies strongly recommended.';
-
-        return {
-            boyYogas: boyYogas,
-            girlYogas: girlYogas,
-            boyScore: boyPct.toFixed(1),
-            girlScore: girlPct.toFixed(1),
-            overallScore: overallPct.toFixed(1),
-            crossFactors: crossFactors,
-            verdict: verdict
-        };
-    }
-
-    // ===== Planet-in-House Analysis for Marriage =====
-    function getPlanetHouseAnalysis(chart) {
-        var analysis = [];
-        var planetNames = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'];
-
-        planetNames.forEach(function(name) {
-            var house = chart.planets[name].house;
-            var effect = PLANET_IN_HOUSE_MARRIAGE[name][house] || 'General influence on house ' + house + '.';
-            analysis.push({
-                planet: name,
-                house: house,
-                rashi: chart.planets[name].rashi,
-                effect: effect
-            });
-        });
-
-        return analysis;
-    }
-
-    // ===== Public API =====
     return {
-        HOUSE_SIGNIFICATIONS: HOUSE_SIGNIFICATIONS,
-        PLANET_IN_HOUSE_MARRIAGE: PLANET_IN_HOUSE_MARRIAGE,
-        findMarriageYogas: findMarriageYogas,
-        analyzeHouseLords: analyzeHouseLords,
-        assessCompatibility: assessCompatibility,
-        getPlanetHouseAnalysis: getPlanetHouseAnalysis
+      index: base,
+      seventh: rows[6],
+      second: rows[1],
+      eleventh: rows[10],
+      fifth: rows[4],
+      eighth: rows[7],
+      twelfth: rows[11],
+      venusDignity: venus,
+      jupiterDignity: jup,
+      seventhAfflictions: afflict,
+      karakaUsed: gender === 'female' ? 'Jupiter' : 'Venus',
     };
+  }
+
+  function verdict(score) {
+    if (score >= 75) return { label: 'Very Strong', cls: 'good' };
+    if (score >= 60) return { label: 'Strong', cls: 'good' };
+    if (score >= 45) return { label: 'Moderate', cls: 'mid' };
+    if (score >= 30) return { label: 'Weak', cls: 'bad' };
+    return { label: 'Challenged', cls: 'bad' };
+  }
+
+  // Combined BPHS compatibility view of the couple
+  function coupleAssessment(boyChart, girlChart) {
+    const b = marriageIndex(boyChart, 'male');
+    const g = marriageIndex(girlChart, 'female');
+    const combined = Math.round((b.index + g.index) / 2);
+    const notes = [];
+
+    // 7th lord placement harmony
+    notes.push(
+      `Boy's 7th house strength ${b.seventh.score}/100 (lord ${b.seventh.lord} in H${b.seventh.lordHouse}); ` +
+      `Girl's 7th house strength ${g.seventh.score}/100 (lord ${g.seventh.lord} in H${g.seventh.lordHouse}).`
+    );
+    if (b.seventhAfflictions || g.seventhAfflictions) {
+      notes.push(
+        `Affliction to the 7th house detected (boy:${b.seventhAfflictions}, girl:${g.seventhAfflictions}) — ` +
+        `indicates need for patience, possible delays or adjustment in marital matters.`
+      );
+    }
+    notes.push(
+      `Karaka dignity — Venus (love/spouse): boy ${b.venusDignity.label}, girl ${g.venusDignity.label}; ` +
+      `Jupiter (wisdom/husband): boy ${b.jupiterDignity.label}, girl ${g.jupiterDignity.label}.`
+    );
+
+    return { boy: b, girl: g, combined, verdict: verdict(combined), notes };
+  }
+
+  return {
+    BHAVA_SIGNIFICATIONS, MARRIAGE_HOUSES, NAT_BENEFIC, NAT_MALEFIC,
+    dignity, occupants, aspectingPlanets, bhavaStrength,
+    analyzeAll, marriageIndex, coupleAssessment, verdict,
+  };
 })();
+
+if (typeof module !== 'undefined' && module.exports) module.exports = BPHS;
