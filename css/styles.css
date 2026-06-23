@@ -78,6 +78,15 @@ header.app-header {
 }
 .app-header p { margin: 8px 0 0; color: var(--muted); font-size: 13px; max-width: 900px; }
 
+/* Developer credit — visible on screen, print and PDF */
+.dev-credit {
+  margin: 8px 0 0; font-size: 13px; font-weight: 600;
+  color: var(--accent); letter-spacing: .2px;
+}
+.dev-credit a { color: var(--accent-4); text-decoration: none; }
+.dev-credit a:hover { text-decoration: underline; }
+.footer-credit { text-align: center; margin-top: 6px; }
+
 .container { max-width: 1200px; margin: 0 auto; padding: 18px 22px 60px; position: relative; z-index: 1; }
 
 /* Tabs */
@@ -306,6 +315,8 @@ td.num, th.num { text-align: right; }
   .muted{ color:#555; }
   .big-score { -webkit-text-fill-color: #b87a00; filter: none; background: none; }
   #report-content { display:block !important; }
+  .dev-credit { color:#5b3fb0 !important; opacity:1 !important; }
+  .dev-credit a { color:#5b3fb0 !important; }
 }
 
 #report-content table { font-size: 12px; }
@@ -371,6 +382,8 @@ td.num, th.num { text-align: right; }
 .pdf-render .chart-svg .chart-title { fill: #5b3fb0 !important; }
 .pdf-render .report-section { page-break-before: always; }
 .pdf-render .kv span:last-child { color: #1a1a1a !important; }
+.pdf-render .dev-credit { color: #5b3fb0 !important; }
+.pdf-render .dev-credit b { color: #5b3fb0 !important; }
 
 /* Bhava house-by-house comparison */
 .bhava-house-card { margin-bottom: 22px; }
