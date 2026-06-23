@@ -742,10 +742,24 @@
     const s = overallScore(); const ov = overallVerdict(s);
     const b = state.boy, g = state.girl;
     const node = $('report-content');
+
+    // Pull the fully-rendered content from each analysis tab so the report
+    // contains EVERY page of analysis. renderReport runs last, so all tab
+    // panels are already populated.
+    const grab = (id) => {
+      const el = $('tab-' + id);
+      return el ? el.innerHTML : '';
+    };
+    const section = (title, id) => `
+      <div class="report-section">
+        <h2 class="report-section-title">${esc(title)}</h2>
+        ${grab(id)}
+      </div>`;
+
     node.innerHTML = `
-      <div class="card">
+      <div class="card report-cover">
         <h2 style="text-align:center">Marriage Compatibility Report</h2>
-        <p class="small muted" style="text-align:center">${esc(b.meta.name)} &amp; ${esc(g.meta.name)} — generated ${new Date().toLocaleDateString()}</p>
+        <p class="small muted" style="text-align:center">${esc(b.meta.name)} &amp; ${esc(g.meta.name)} — generated ${new Date().toLocaleString()}</p>
         <div style="text-align:center;margin:10px 0">
           <span class="big-score">${s}<small>/100</small></span><br/>${chip(ov.label, ov.cls)}
         </div>
@@ -760,17 +774,24 @@
           <tr><td>Nearest marriage window</td><td>${esc(r.window.nearestRange)}</td></tr>
           ${r.koota.ashtakoota.doshas.length ? `<tr><td>Dosha alerts</td><td>${r.koota.ashtakoota.doshas.join(', ')}</td></tr>` : ''}
         </table>
+        <div class="card" style="margin-top:14px"><h3>Birth Data</h3>${header(b)}${header(g)}</div>
+        <p class="small muted" style="margin-top:10px">This report contains the complete analysis: visual charts (D1/D9/KP),
+          house-by-house matching, BPHS &amp; KP assessments, Koota matching, marriage timing, the 20-year forecast,
+          transits, health compatibility and Sarvashtakavarga.</p>
       </div>
-      <div class="card"><h3>Birth Data</h3>${header(b)}${header(g)}</div>
-      <div class="card"><h3>Groom — Planetary Positions</h3>${planetTable(b)}</div>
-      <div class="card"><h3>Bride — Planetary Positions</h3>${planetTable(g)}</div>
-      <div class="card"><h3>Ashtakoota Detail</h3>${tableFromAshta(r.koota.ashtakoota)}</div>
-      <div class="card"><h3>Dashakoota Detail</h3>${tableFromDasha(r.koota.dashakoota)}</div>
-      <div class="card"><h3>BPHS Interpretation</h3>${r.bphs.notes.map((n)=>`<p class="small">• ${esc(n)}</p>`).join('')}</div>
-      <div class="card"><h3>KP Interpretation</h3>${r.kp.notes.map((n)=>`<p class="small">• ${esc(n)}</p>`).join('')}</div>
-      <div class="card"><h3>Marriage Timing &amp; Forecast (next periods)</h3>${forecastMini(r.forecast)}</div>
-      <div class="card"><h3>Health Compatibility</h3>${r.health.notes.map((n)=>`<p class="small">• ${esc(n)}</p>`).join('')}</div>
-      <p class="footer-note">For educational &amp; decision-support purposes only.</p>
+
+      ${section('1 · Charts (D1, D9, KP)', 'charts')}
+      ${section('2 · House-by-House Matching (Bhāva)', 'bhava')}
+      ${section('3 · BPHS Assessment', 'bphs')}
+      ${section('4 · KP Assessment', 'kp')}
+      ${section('5 · Koota Matching (Ashtakoota & Dashakoota)', 'koota')}
+      ${section('6 · Marriage Timing', 'timing')}
+      ${section('7 · 20-Year Relationship Forecast', 'forecast')}
+      ${section('8 · Transits (Gochara)', 'transit')}
+      ${section('9 · Health Compatibility', 'health')}
+      ${section('10 · Sarvashtakavarga (SAV)', 'sarvashtaka')}
+
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v4.4</p>
     `;
   }
   function tableFromAshta(a) {
@@ -790,18 +811,75 @@
   $('downloadPdf').addEventListener('click', () => {
     if (!state.results) { alert('Please generate a report first (Tab 1).'); return; }
     const el = $('report-content');
+    const name = `Marriage-Report-${state.boy.meta.name}-${state.girl.meta.name}.pdf`.replace(/\s+/g, '_');
     if (window.html2pdf) {
-      const name = `Marriage-Report-${state.boy.meta.name}-${state.girl.meta.name}.pdf`.replace(/\s+/g, '_');
+      // Apply light printable theme so output isn't blank (white-on-white)
+      el.classList.add('pdf-render');
+      const restore = () => el.classList.remove('pdf-render');
       window.html2pdf().set({
-        margin: 10, filename: name,
+        margin: [8, 8, 8, 8], filename: name,
         image: { type: 'jpeg', quality: 0.95 },
-        html2canvas: { scale: 2, backgroundColor: '#ffffff' },
+        html2canvas: { scale: 1.6, backgroundColor: '#ffffff', useCORS: true, logging: false, windowWidth: 1100 },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        pagebreak: { mode: ['css', 'legacy'] },
-      }).from(el).save();
+        pagebreak: { mode: ['css', 'legacy'], before: '.report-section' },
+      }).from(el).save().then(restore).catch((e) => { restore(); console.error('PDF error', e); alert('PDF generation had an issue; try "Open print dialog" or "Download HTML" instead.'); });
     } else {
       window.print();
     }
+  });
+
+  $('downloadHtml').addEventListener('click', async () => {
+    if (!state.results) { alert('Please generate a report first (Tab 1).'); return; }
+    const reportHtml = $('report-content').innerHTML;
+    // Try to inline the stylesheet so the file renders standalone/offline
+    let css = '';
+    try {
+      const res = await fetch('css/styles.css');
+      if (res.ok) css = await res.text();
+    } catch (e) { /* fallback to minimal inline styles below */ }
+
+    const boyName = esc(state.boy.meta.name);
+    const girlName = esc(state.girl.meta.name);
+    const dateStr = new Date().toLocaleString();
+    const fileName = `Marriage-Report-${state.boy.meta.name}-${state.girl.meta.name}.html`.replace(/\s+/g, '_');
+
+    const doc = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Marriage Compatibility Report — ${boyName} & ${girlName}</title>
+<style>
+${css}
+/* standalone overrides so the report is readable on its own */
+body { padding: 24px; max-width: 1000px; margin: 0 auto; }
+.tab-panel, #report-content { display: block !important; }
+.report-meta { color: var(--muted, #9aa3b2); font-size: 12px; margin-bottom: 18px; text-align:center; }
+@media print { body { background:#fff; color:#111; } }
+</style>
+</head>
+<body>
+<header class="app-header" style="border-radius:14px;margin-bottom:18px">
+  <h1><span class="om">&#x0950;</span> Vedic Marriage Matching Report</h1>
+  <p>${boyName} &amp; ${girlName}</p>
+</header>
+<div class="report-meta">Generated ${esc(dateStr)} — Vedic Marriage Matching Module (BPHS &amp; KP)</div>
+<div id="report-content">${reportHtml}</div>
+<p class="footer-note" style="text-align:center;margin-top:24px;opacity:.7;font-size:11.5px">
+  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v4.2
+</p>
+</body>
+</html>`;
+
+    const blob = new Blob([doc], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   });
 
   /* ---------------- GeoCity autocomplete initialization ---------------- */

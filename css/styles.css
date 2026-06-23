@@ -310,6 +310,68 @@ td.num, th.num { text-align: right; }
 
 #report-content table { font-size: 12px; }
 
+/* Full report sections */
+.report-section { margin-top: 26px; }
+.report-section-title {
+  font-size: 19px; margin: 0 0 10px;
+  padding: 10px 14px; border-radius: 10px;
+  background: linear-gradient(135deg, var(--accent-3), var(--accent-2));
+  color: #fff;
+}
+.report-cover { border: 2px solid var(--accent-3); }
+@media print {
+  .report-section { page-break-before: always; }
+  .report-cover { page-break-after: always; }
+  .report-section-title { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #5b3fb0 !important; color:#fff !important; }
+}
+
+/* PDF render mode — forces a light, printable theme so html2canvas output
+   is not white-text-on-white (which looks blank). Applied only during PDF export. */
+.pdf-render, .pdf-render * { color: #1a1a1a !important; }
+.pdf-render { background: #ffffff !important; }
+.pdf-render .card,
+.pdf-render .bhava-col,
+.pdf-render .bhava-result,
+.pdf-render .bhava-what-indicates,
+.pdf-render .chart-box,
+.pdf-render fieldset,
+.pdf-render .callout {
+  background: #ffffff !important;
+  border-color: #cccccc !important;
+  box-shadow: none !important;
+}
+.pdf-render .card::before,
+.pdf-render fieldset::after { display: none !important; }
+.pdf-render h1, .pdf-render h2, .pdf-render h3,
+.pdf-render .big-score, .pdf-render .card h2, .pdf-render .manual h2 {
+  -webkit-text-fill-color: initial !important;
+  background: none !important;
+  color: #5b3fb0 !important;
+}
+.pdf-render .report-section-title {
+  background: #5b3fb0 !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+.pdf-render .muted, .pdf-render .small.muted, .pdf-render .footer-note { color: #555555 !important; }
+.pdf-render th { color: #333333 !important; background: #f0f0f0 !important; }
+.pdf-render td, .pdf-render th { border-color: #cccccc !important; }
+.pdf-render .chip { border: 1px solid #999999 !important; background: #f3f3f3 !important; }
+.pdf-render .chip.good { color: #137a4a !important; }
+.pdf-render .chip.bad { color: #9d2b24 !important; }
+.pdf-render .chip.mid { color: #8a6d10 !important; }
+.pdf-render .pass { color: #137a4a !important; }
+.pdf-render .fail { color: #9d2b24 !important; }
+.pdf-render .gauge .bar { background: #eeeeee !important; border-color: #bbbbbb !important; }
+.pdf-render .gauge .fill { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.pdf-render .bhava-sign-badge { background: #5b3fb0 !important; color: #fff !important; -webkit-text-fill-color:#fff !important; }
+.pdf-render .chart-box { border-color: #999 !important; }
+.pdf-render .chart-svg .chart-planet { fill: #111111 !important; }
+.pdf-render .chart-svg .chart-sign { fill: #0a7a52 !important; }
+.pdf-render .chart-svg .chart-title { fill: #5b3fb0 !important; }
+.pdf-render .report-section { page-break-before: always; }
+.pdf-render .kv span:last-child { color: #1a1a1a !important; }
+
 /* Bhava house-by-house comparison */
 .bhava-house-card { margin-bottom: 22px; }
 .bhava-house-header {
