@@ -306,28 +306,135 @@
     const cells = [['7th (Spouse)', mi.seventh], ['2nd (Family)', mi.second], ['11th (Fulfilment)', mi.eleventh], ['5th (Romance)', mi.fifth], ['8th (Intimacy)', mi.eighth]];
     return cells.map(([lbl, h]) => `<div class="kv"><span>${lbl}</span><span>${h.score}/100 — lord ${h.lord} in H${h.lordHouse}</span></div>`).join('');
   }
+
+  function bphsHouseDetail(chart, houseNum, gender) {
+    const s = BPHS.bhavaStrength(houseNum, chart);
+    const v = BPHS.verdict(s.score);
+    const karaka = gender === 'female' ? 'Jupiter' : 'Venus';
+
+    // Build specific interpretation based on actual chart placements
+    const interp = [];
+
+    // Lord interpretation
+    const lordDig = BPHS.dignity(s.lord, chart);
+    if (lordDig.score >= 4) interp.push(`${s.lord} (lord) is ${lordDig.label} — strongly empowers this house's significations.`);
+    else if (lordDig.score >= 2) interp.push(`${s.lord} (lord) in ${lordDig.label} — good support for this house.`);
+    else if (lordDig.score <= -1) interp.push(`${s.lord} (lord) is ${lordDig.label} — weakens this house; remedial measures beneficial.`);
+    else interp.push(`${s.lord} (lord) is in a ${lordDig.label} — neutral influence.`);
+
+    // Lord placement
+    if ([1, 4, 7, 10].includes(s.lordHouse)) interp.push(`Lord placed in kendra (H${s.lordHouse}) — gives strength and stability to this bhāva.`);
+    else if ([5, 9].includes(s.lordHouse)) interp.push(`Lord placed in trikona (H${s.lordHouse}) — auspicious; dharmic support.`);
+    else if ([6, 8, 12].includes(s.lordHouse)) interp.push(`Lord placed in dusthana (H${s.lordHouse}) — struggles and challenges in this area.`);
+    else if (s.lordHouse === houseNum) interp.push(`Lord in own house — highly fortified; person strongly experiences this house's themes.`);
+
+    // Occupants — specific readings
+    if (s.occupants.length > 0) {
+      s.occupants.forEach((p) => {
+        const pDig = BPHS.dignity(p, chart);
+        const retro = chart.planets[p].retro ? ' (retrograde — karmic, intensified)' : '';
+        if (BPHS.NAT_BENEFIC.includes(p)) {
+          interp.push(`${p}${retro} occupies this house (${pDig.label}) — benefic presence enhances positive outcomes.`);
+        } else {
+          interp.push(`${p}${retro} occupies this house (${pDig.label}) — malefic presence creates pressure; transforms through challenges.`);
+        }
+      });
+    } else {
+      interp.push('No planets occupy this house — results depend entirely on the lord\'s condition and aspects received.');
+    }
+
+    // Aspects — specific
+    if (s.aspects.length > 0) {
+      s.aspects.forEach((p) => {
+        if (BPHS.NAT_BENEFIC.includes(p)) {
+          interp.push(`${p} aspects this house — protective, enhancing influence.`);
+        } else {
+          interp.push(`${p} aspects this house — adds intensity and challenge.`);
+        }
+      });
+    }
+
+    // Marriage-karaka connection
+    if (houseNum === 7) {
+      const karakaPl = chart.planets[karaka];
+      const karakaDig = BPHS.dignity(karaka, chart);
+      interp.push(`Marriage kāraka ${karaka} is in ${karakaPl.signName} (H${karakaPl.house}, ${karakaDig.label}) — ${karakaDig.score >= 2 ? 'supports marital happiness' : 'needs attention for relationship fulfilment'}.`);
+    }
+
+    return { ...s, verdict: v, interp };
+  }
+
+  function bphsHouseCard(label, detail, houseNum) {
+    const houseName = BPHS.BHAVA_SIGNIFICATIONS[houseNum] ? BPHS.BHAVA_SIGNIFICATIONS[houseNum].name : 'House ' + houseNum;
+    return `
+      <div class="kv"><span><b>H${houseNum}</b> ${esc(houseName)}</span><span>${chip(detail.verdict.label, detail.verdict.cls)} ${detail.score}/100</span></div>
+      <div class="small" style="margin:4px 0 4px 8px; padding-left:10px; border-left:2px solid var(--border)">
+        <div class="muted">Sign: <b>${detail.signName}</b> | Lord: <b>${detail.lord}</b> (H${detail.lordHouse}, ${esc(detail.lordDignity)}) | Occupants: ${detail.occupants.length ? detail.occupants.join(', ') : '—'} | Aspects: ${detail.aspects.length ? detail.aspects.join(', ') : '—'}</div>
+        ${detail.interp.map((i) => `<p class="small" style="margin:2px 0">• ${esc(i)}</p>`).join('')}
+      </div>`;
+  }
+
   function renderBPHS() {
     const r = state.results; const b = r.bphs;
+    const boy = state.boy, girl = state.girl;
+
+    // Generate specific house assessments for all 12 houses
+    const marriageHouses = [7, 2, 11, 5, 8, 4, 12, 1, 9];
+    const boyDetails = marriageHouses.map((h) => bphsHouseDetail(boy, h, 'male'));
+    const girlDetails = marriageHouses.map((h) => bphsHouseDetail(girl, h, 'female'));
+
+    let boyHouseCards = '', girlHouseCards = '';
+    marriageHouses.forEach((h, idx) => {
+      boyHouseCards += bphsHouseCard('Groom', boyDetails[idx], h);
+      girlHouseCards += bphsHouseCard('Bride', girlDetails[idx], h);
+    });
+
     $('tab-bphs').innerHTML = `
       <div class="card">
-        <h2>BPHS Marriage Assessment</h2>
-        <div style="margin:6px 0">${chip(b.verdict.label, b.verdict.cls)} &nbsp; Combined index <b>${b.combined}/100</b></div>
-        ${gaugePct('Groom marriage index', b.boy.index)}
-        ${gaugePct('Bride marriage index', b.girl.index)}
+        <h2>BPHS Marriage Assessment — Specific Results</h2>
+        <p class="small muted">Chart-specific assessment of each marriage-relevant house for both partners, based on their actual planetary placements, lordships, and aspects.</p>
+        <div style="margin:10px 0">${chip(b.verdict.label, b.verdict.cls)} &nbsp; Combined index <b>${b.combined}/100</b></div>
+        <div class="grid-2">
+          <div>${gaugePct(boy.meta.name + ' (Groom) marriage index', b.boy.index)}</div>
+          <div>${gaugePct(girl.meta.name + ' (Bride) marriage index', b.girl.index)}</div>
+        </div>
       </div>
+
       <div class="grid-2">
-        <div class="card"><h3>Groom — key marriage houses</h3>${marriageHouseMini(b.boy)}
-          <div class="kv"><span>Venus (kāraka) dignity</span><span>${esc(b.boy.venusDignity.label)}</span></div>
-          <div class="kv"><span>Jupiter dignity</span><span>${esc(b.boy.jupiterDignity.label)}</span></div>
-          <div class="kv"><span>7th-house afflictions</span><span>${b.boy.seventhAfflictions}</span></div>
+        <div class="card">
+          <h3>${esc(boy.meta.name)} (Groom) — House-by-House Assessment</h3>
+          ${header(boy)}
+          <div class="kv" style="margin-bottom:8px"><span>Lagna</span><span>${boy.ascendant.signName}</span></div>
+          ${boyHouseCards}
+          <div style="margin-top:12px">
+            <div class="kv"><span>Venus (love kāraka) dignity</span><span><b>${esc(b.boy.venusDignity.label)}</b></span></div>
+            <div class="kv"><span>Jupiter (wisdom) dignity</span><span>${esc(b.boy.jupiterDignity.label)}</span></div>
+            <div class="kv"><span>7th-house malefic afflictions</span><span>${b.boy.seventhAfflictions} planet(s)</span></div>
+          </div>
         </div>
-        <div class="card"><h3>Bride — key marriage houses</h3>${marriageHouseMini(b.girl)}
-          <div class="kv"><span>Jupiter (kāraka) dignity</span><span>${esc(b.girl.jupiterDignity.label)}</span></div>
-          <div class="kv"><span>Venus dignity</span><span>${esc(b.girl.venusDignity.label)}</span></div>
-          <div class="kv"><span>7th-house afflictions</span><span>${b.girl.seventhAfflictions}</span></div>
+        <div class="card">
+          <h3>${esc(girl.meta.name)} (Bride) — House-by-House Assessment</h3>
+          ${header(girl)}
+          <div class="kv" style="margin-bottom:8px"><span>Lagna</span><span>${girl.ascendant.signName}</span></div>
+          ${girlHouseCards}
+          <div style="margin-top:12px">
+            <div class="kv"><span>Jupiter (husband kāraka) dignity</span><span><b>${esc(b.girl.jupiterDignity.label)}</b></span></div>
+            <div class="kv"><span>Venus (love) dignity</span><span>${esc(b.girl.venusDignity.label)}</span></div>
+            <div class="kv"><span>7th-house malefic afflictions</span><span>${b.girl.seventhAfflictions} planet(s)</span></div>
+          </div>
         </div>
       </div>
-      <div class="card"><h3>Interpretation</h3>${b.notes.map((n) => `<p class="small">• ${esc(n)}</p>`).join('')}</div>`;
+
+      <div class="card">
+        <h3>Combined Interpretation</h3>
+        ${b.notes.map((n) => `<p class="small">• ${esc(n)}</p>`).join('')}
+      </div>
+
+      <div class="callout small">This assessment reads each house <b>specifically from the chart</b> — the sign on the cusp,
+        the lord's dignity and placement, actual occupant planets and their condition, and aspects received.
+        Houses 7 (marriage), 2 (family life), 11 (wish-fulfilment), 5 (romance/children) and 8 (marital intimacy)
+        are the primary indicators; houses 4 (home happiness), 12 (bed pleasures), 1 (self) and 9 (fortune/dharma)
+        also contribute.</div>`;
   }
 
   /* ---------------- KP ---------------- */
