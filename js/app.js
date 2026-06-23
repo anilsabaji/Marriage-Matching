@@ -100,8 +100,8 @@
             renderBhavaAnalysis();
             renderBPHSAssessment();
             renderKPAssessment();
-            renderTimelinePlaceholder();
-            renderForecastPlaceholder();
+            renderMarriageTimeline();
+            renderForecast();
             renderHealthPlaceholder();
             renderAshtakootaPlaceholder();
             renderDashakootaPlaceholder();
@@ -546,18 +546,330 @@
         return html;
     }
 
-    function renderTimelinePlaceholder() {
+    function renderMarriageTimeline() {
         var container = document.getElementById('timeline-content');
         if (!container) return;
-        container.innerHTML = '<div class="result-card"><h4>Marriage Timeline Analysis</h4>' +
-            '<p>Dasha data computed. Marriage timeline prediction will be rendered here.</p></div>';
+
+        var nowJD = DashaTimeline.getNowJD();
+        var html = '';
+
+        // Current Dasha periods for both
+        var boyCurrentPeriod = DashaTimeline.getCurrentPeriod(appState.boyChart, nowJD);
+        var girlCurrentPeriod = DashaTimeline.getCurrentPeriod(appState.girlChart, nowJD);
+
+        // Marriage windows for both charts
+        var boyWindows = DashaTimeline.findNearestMarriageWindow(appState.boyChart, nowJD, 10);
+        var girlWindows = DashaTimeline.findNearestMarriageWindow(appState.girlChart, nowJD, 10);
+
+        // Find overlapping favorable periods
+        var overlaps = DashaTimeline.findOverlappingWindows(boyWindows, girlWindows);
+
+        // Transit analysis at current time
+        var boyTransitNow = Transit.getTransitMarriageScore(appState.boyChart, nowJD);
+        var girlTransitNow = Transit.getTransitMarriageScore(appState.girlChart, nowJD);
+
+        // Double transit analysis
+        var boyDoubleTransit = Transit.analyzeDoubleTransit(appState.boyChart, nowJD);
+        var girlDoubleTransit = Transit.analyzeDoubleTransit(appState.girlChart, nowJD);
+
+        // === Current Running Period ===
+        html += '<h3>Currently Running Dasha Periods</h3>';
+        html += '<div class="form-row">';
+        html += '<div class="form-section"><h3>Boy (' + appState.boyName + ')</h3>';
+        if (boyCurrentPeriod && boyCurrentPeriod.dasha) {
+            html += '<p><strong>Mahadasha:</strong> ' + boyCurrentPeriod.dasha.lord + ' (' + DashaTimeline.formatDate(boyCurrentPeriod.dasha.startDate) + ' to ' + DashaTimeline.formatDate(boyCurrentPeriod.dasha.endDate) + ')</p>';
+            if (boyCurrentPeriod.antardasha) {
+                html += '<p><strong>Antardasha:</strong> ' + boyCurrentPeriod.antardasha.lord + ' (' + DashaTimeline.formatDate(boyCurrentPeriod.antardasha.startDate) + ' to ' + DashaTimeline.formatDate(boyCurrentPeriod.antardasha.endDate) + ')</p>';
+            }
+            if (boyCurrentPeriod.pratyantardasha) {
+                html += '<p><strong>Pratyantardasha:</strong> ' + boyCurrentPeriod.pratyantardasha.lord + ' (' + DashaTimeline.formatDate(boyCurrentPeriod.pratyantardasha.startDate) + ' to ' + DashaTimeline.formatDate(boyCurrentPeriod.pratyantardasha.endDate) + ')</p>';
+            }
+        }
+        html += '</div>';
+        html += '<div class="form-section"><h3>Girl (' + appState.girlName + ')</h3>';
+        if (girlCurrentPeriod && girlCurrentPeriod.dasha) {
+            html += '<p><strong>Mahadasha:</strong> ' + girlCurrentPeriod.dasha.lord + ' (' + DashaTimeline.formatDate(girlCurrentPeriod.dasha.startDate) + ' to ' + DashaTimeline.formatDate(girlCurrentPeriod.dasha.endDate) + ')</p>';
+            if (girlCurrentPeriod.antardasha) {
+                html += '<p><strong>Antardasha:</strong> ' + girlCurrentPeriod.antardasha.lord + ' (' + DashaTimeline.formatDate(girlCurrentPeriod.antardasha.startDate) + ' to ' + DashaTimeline.formatDate(girlCurrentPeriod.antardasha.endDate) + ')</p>';
+            }
+            if (girlCurrentPeriod.pratyantardasha) {
+                html += '<p><strong>Pratyantardasha:</strong> ' + girlCurrentPeriod.pratyantardasha.lord + ' (' + DashaTimeline.formatDate(girlCurrentPeriod.pratyantardasha.startDate) + ' to ' + DashaTimeline.formatDate(girlCurrentPeriod.pratyantardasha.endDate) + ')</p>';
+            }
+        }
+        html += '</div></div>';
+
+        // === Current Transit Conditions ===
+        html += '<h3 class="mt-3">Current Transit Conditions</h3>';
+        html += '<div class="form-row">';
+        html += '<div class="form-section"><h3>Boy Transit Score: ' + boyTransitNow.score.toFixed(1) + '/10</h3>';
+        html += '<div class="score-bar"><div class="score-bar-fill" style="width:' + (boyTransitNow.score * 10) + '%"></div></div>';
+        if (boyTransitNow.factors.length > 0) {
+            html += '<ul style="margin-top:0.5rem;padding-left:1.5rem;">';
+            boyTransitNow.factors.forEach(function(f) { html += '<li>' + f + '</li>'; });
+            html += '</ul>';
+        }
+        html += '<p class="mt-1"><strong>Double Transit:</strong> ' + boyDoubleTransit.interpretation + '</p>';
+        html += '</div>';
+        html += '<div class="form-section"><h3>Girl Transit Score: ' + girlTransitNow.score.toFixed(1) + '/10</h3>';
+        html += '<div class="score-bar"><div class="score-bar-fill" style="width:' + (girlTransitNow.score * 10) + '%"></div></div>';
+        if (girlTransitNow.factors.length > 0) {
+            html += '<ul style="margin-top:0.5rem;padding-left:1.5rem;">';
+            girlTransitNow.factors.forEach(function(f) { html += '<li>' + f + '</li>'; });
+            html += '</ul>';
+        }
+        html += '<p class="mt-1"><strong>Double Transit:</strong> ' + girlDoubleTransit.interpretation + '</p>';
+        html += '</div></div>';
+
+        // === Marriage Significators Used ===
+        html += '<h3 class="mt-3">Marriage Significators (Planets Connected to Houses 2, 7, 11)</h3>';
+        html += '<div class="form-row">';
+        html += '<div class="form-section"><h3>Boy</h3>';
+        html += renderMarriageSignificatorSummary(appState.boyChart);
+        html += '</div>';
+        html += '<div class="form-section"><h3>Girl</h3>';
+        html += renderMarriageSignificatorSummary(appState.girlChart);
+        html += '</div></div>';
+
+        // === Overlapping Favorable Periods (Top Priority) ===
+        html += '<h3 class="mt-3">Overlapping Favorable Marriage Windows (Both Charts)</h3>';
+        if (overlaps.length > 0) {
+            html += '<p>The following periods are favorable for BOTH charts simultaneously:</p>';
+            html += '<table class="data-table">';
+            html += '<thead><tr><th>#</th><th>Period</th><th>Boy Period</th><th>Girl Period</th><th>Combined Score</th></tr></thead>';
+            html += '<tbody>';
+            var maxOverlaps = Math.min(overlaps.length, 10);
+            for (var o = 0; o < maxOverlaps; o++) {
+                var ov = overlaps[o];
+                var strength = DashaTimeline.getStrengthRating(ov.combinedScore);
+                html += '<tr>';
+                html += '<td>' + (o + 1) + '</td>';
+                html += '<td>' + DashaTimeline.formatDate(ov.startDate) + ' - ' + DashaTimeline.formatDate(ov.endDate) + '</td>';
+                html += '<td>' + ov.boyPeriod + '</td>';
+                html += '<td>' + ov.girlPeriod + '</td>';
+                html += '<td><span class="period-strength ' + strength.cssClass + '">' + ov.combinedScore.toFixed(1) + ' (' + strength.label + ')</span></td>';
+                html += '</tr>';
+            }
+            html += '</tbody></table>';
+        } else {
+            html += '<p class="text-warning">No overlapping favorable windows found in the next 10 years. Individual favorable periods are listed below.</p>';
+        }
+
+        // === Individual Favorable Periods ===
+        html += '<h3 class="mt-3">Favorable Marriage Windows - Boy (' + appState.boyName + ')</h3>';
+        html += renderWindowsTable(boyWindows, appState.boyChart);
+
+        html += '<h3 class="mt-3">Favorable Marriage Windows - Girl (' + appState.girlName + ')</h3>';
+        html += renderWindowsTable(girlWindows, appState.girlChart);
+
+        container.innerHTML = html;
     }
 
-    function renderForecastPlaceholder() {
+    function renderMarriageSignificatorSummary(chart) {
+        var sigPlanets = DashaTimeline.getMarriageSignificatorPlanets(chart);
+        var html = '<table class="data-table">';
+        html += '<thead><tr><th>Planet</th><th>Signifies Houses</th><th>Strength</th></tr></thead>';
+        html += '<tbody>';
+        var planetNames = Object.keys(sigPlanets);
+        if (planetNames.length === 0) {
+            html += '<tr><td colspan="3">No strong marriage significators found</td></tr>';
+        } else {
+            planetNames.forEach(function(name) {
+                var p = sigPlanets[name];
+                html += '<tr>';
+                html += '<td><strong>' + name + '</strong></td>';
+                html += '<td>' + p.houses.join(', ') + '</td>';
+                html += '<td>' + p.strength + '/3</td>';
+                html += '</tr>';
+            });
+        }
+        html += '</tbody></table>';
+        return html;
+    }
+
+    function renderWindowsTable(windows, chart) {
+        if (windows.length === 0) {
+            return '<p class="text-warning">No strongly favorable marriage windows found in the next 10 years based on Dasha analysis alone.</p>';
+        }
+        var html = '<table class="data-table">';
+        html += '<thead><tr><th>#</th><th>Period</th><th>MD-AD-PD</th><th>Dasha Score</th><th>Strength</th><th>Reasons</th></tr></thead>';
+        html += '<tbody>';
+        var maxWindows = Math.min(windows.length, 15);
+        for (var w = 0; w < maxWindows; w++) {
+            var win = windows[w];
+            // Add transit score for this window
+            var transitScore = Transit.getTransitSummaryForPeriod(chart, win.startJD, win.endJD);
+            var combined = Transit.getCombinedScore(win.score, transitScore.score);
+            html += '<tr>';
+            html += '<td>' + (w + 1) + '</td>';
+            html += '<td>' + DashaTimeline.formatDate(win.startDate) + ' - ' + DashaTimeline.formatDate(win.endDate) + '</td>';
+            html += '<td>' + win.dasha + '-' + win.antardasha + '-' + win.pratyantardasha + '</td>';
+            html += '<td>' + win.score.toFixed(1) + '/10</td>';
+            html += '<td><span class="period-strength ' + win.strength.cssClass + '">' + win.strength.label + '</span></td>';
+            html += '<td>' + (win.reasons.length > 0 ? win.reasons.slice(0, 2).join('; ') : '-') + '</td>';
+            html += '</tr>';
+        }
+        html += '</tbody></table>';
+        return html;
+    }
+
+    function renderForecast() {
         var container = document.getElementById('forecast-content');
         if (!container) return;
-        container.innerHTML = '<div class="result-card"><h4>20-Year Forecast</h4>' +
-            '<p>Dasha, Antardasha, and Pratyantardasha data computed. Forecast will be rendered here.</p></div>';
+
+        var nowJD = DashaTimeline.getNowJD();
+        var html = '';
+
+        // Generate forecast for both charts
+        var boyForecast = DashaTimeline.generate20YearForecast(appState.boyChart, nowJD);
+        var girlForecast = DashaTimeline.generate20YearForecast(appState.girlChart, nowJD);
+
+        html += '<h3>20-Year Relationship Forecast - Boy (' + appState.boyName + ')</h3>';
+        html += '<p class="mb-2">Dasha-Antardasha periods with relationship strength assessment based on signification of houses 2, 7, 11 and transit conditions.</p>';
+        html += renderForecastTimeline(boyForecast, appState.boyChart);
+
+        html += '<h3 class="mt-3">20-Year Relationship Forecast - Girl (' + appState.girlName + ')</h3>';
+        html += '<p class="mb-2">Dasha-Antardasha periods with relationship strength assessment based on signification of houses 2, 7, 11 and transit conditions.</p>';
+        html += renderForecastTimeline(girlForecast, appState.girlChart);
+
+        // Combined outlook summary
+        html += '<h3 class="mt-3">Combined Relationship Outlook</h3>';
+        html += renderCombinedOutlook(boyForecast, girlForecast, appState.boyChart, appState.girlChart);
+
+        container.innerHTML = html;
+    }
+
+    function renderForecastTimeline(forecast, chart) {
+        if (forecast.length === 0) return '<p>No forecast data available.</p>';
+
+        var html = '<table class="data-table">';
+        html += '<thead><tr><th>Period</th><th>MD-AD</th><th>Dasha Score</th><th>Transit Score</th><th>Combined</th><th>Strength</th><th>Interpretation</th></tr></thead>';
+        html += '<tbody>';
+
+        var marriageSig = DashaTimeline.getMarriageSignificatorPlanets(chart);
+
+        for (var i = 0; i < forecast.length; i++) {
+            var period = forecast[i];
+            // Calculate transit score for this period
+            var transitResult = Transit.getTransitSummaryForPeriod(chart, period.startJD, period.endJD);
+            var combinedScore = Transit.getCombinedScore(period.score, transitResult.score);
+            var combinedStrength = DashaTimeline.getStrengthRating(combinedScore);
+
+            var interpretation = DashaTimeline.getInterpretation(
+                period.dashaLord, period.antarLord, null, combinedScore, marriageSig
+            );
+
+            // Color coding class
+            var rowClass = '';
+            if (combinedScore >= 5) rowClass = 'style="background-color:#dcfce7;"'; // green
+            else if (combinedScore >= 2) rowClass = 'style="background-color:#fef9c3;"'; // yellow
+            else if (combinedScore >= -2) rowClass = 'style="background-color:#fed7aa;"'; // orange
+            else rowClass = 'style="background-color:#fecaca;"'; // red
+
+            html += '<tr ' + rowClass + '>';
+            html += '<td>' + DashaTimeline.formatDate(period.startDate) + ' - ' + DashaTimeline.formatDate(period.endDate) + '</td>';
+            html += '<td><strong>' + period.dashaLord + '-' + period.antarLord + '</strong></td>';
+            html += '<td>' + period.score.toFixed(1) + '</td>';
+            html += '<td>' + transitResult.score.toFixed(1) + '</td>';
+            html += '<td><strong>' + combinedScore.toFixed(1) + '</strong></td>';
+            html += '<td><span class="period-strength ' + combinedStrength.cssClass + '">' + combinedStrength.label + '</span></td>';
+            html += '<td style="max-width:250px;font-size:0.8rem;">' + interpretation + '</td>';
+            html += '</tr>';
+
+            // Show Pratyantardasha breakdown for strong periods (expandable detail)
+            if (combinedScore >= 4 && period.pratyantardasha && period.pratyantardasha.length > 0) {
+                html += '<tr><td colspan="7" style="padding:0.5rem 2rem;background:#f0fdf4;">';
+                html += '<strong>Pratyantardasha Detail (Fine Timing):</strong> ';
+                var pdSummary = [];
+                for (var p = 0; p < period.pratyantardasha.length; p++) {
+                    var pd = period.pratyantardasha[p];
+                    if (pd.score >= 3) {
+                        pdSummary.push(pd.lord + ' (' + DashaTimeline.formatDate(pd.startDate) + ' - ' + DashaTimeline.formatDate(pd.endDate) + ', score: ' + pd.score.toFixed(1) + ')');
+                    }
+                }
+                html += pdSummary.length > 0 ? pdSummary.join('; ') : 'No strongly favorable sub-periods in this Antardasha.';
+                html += '</td></tr>';
+            }
+        }
+
+        html += '</tbody></table>';
+        return html;
+    }
+
+    function renderCombinedOutlook(boyForecast, girlForecast, boyChart, girlChart) {
+        // Create a yearly summary combining both forecasts
+        var nowJD = DashaTimeline.getNowJD();
+        var nowDate = AstroCore.jdToDate(nowJD);
+        var startYear = nowDate.year;
+
+        var html = '<table class="data-table">';
+        html += '<thead><tr><th>Year</th><th>Boy Outlook</th><th>Girl Outlook</th><th>Combined</th><th>Transit Highlights</th></tr></thead>';
+        html += '<tbody>';
+
+        for (var y = 0; y < 20; y++) {
+            var yearStart = nowJD + y * 365.25;
+            var yearEnd = yearStart + 365.25;
+            var yearNum = startYear + y;
+
+            // Find the dominant period for boy in this year
+            var boyScore = getAverageScoreForYear(boyForecast, yearStart, yearEnd);
+            var girlScore = getAverageScoreForYear(girlForecast, yearStart, yearEnd);
+            var combinedScore = (boyScore + girlScore) / 2;
+            var combinedStrength = DashaTimeline.getStrengthRating(combinedScore);
+
+            // Transit highlights for the year
+            var midYearJD = yearStart + 182.5;
+            var boyTransit = Transit.getTransitMarriageScore(boyChart, midYearJD);
+            var girlTransit = Transit.getTransitMarriageScore(girlChart, midYearJD);
+            var transitHighlights = [];
+            if (boyTransit.factors.length > 0) transitHighlights.push('Boy: ' + boyTransit.factors[0]);
+            if (girlTransit.factors.length > 0) transitHighlights.push('Girl: ' + girlTransit.factors[0]);
+
+            var rowClass = '';
+            if (combinedScore >= 5) rowClass = 'style="background-color:#dcfce7;"';
+            else if (combinedScore >= 2) rowClass = 'style="background-color:#fef9c3;"';
+            else if (combinedScore >= -2) rowClass = 'style="background-color:#fed7aa;"';
+            else rowClass = 'style="background-color:#fecaca;"';
+
+            html += '<tr ' + rowClass + '>';
+            html += '<td><strong>' + yearNum + '</strong></td>';
+            html += '<td>' + DashaTimeline.getStrengthRating(boyScore).label + ' (' + boyScore.toFixed(1) + ')</td>';
+            html += '<td>' + DashaTimeline.getStrengthRating(girlScore).label + ' (' + girlScore.toFixed(1) + ')</td>';
+            html += '<td><span class="period-strength ' + combinedStrength.cssClass + '">' + combinedStrength.label + '</span></td>';
+            html += '<td style="font-size:0.8rem;">' + (transitHighlights.length > 0 ? transitHighlights.join('; ') : '-') + '</td>';
+            html += '</tr>';
+        }
+
+        html += '</tbody></table>';
+
+        // Legend
+        html += '<div class="mt-2" style="display:flex;gap:1rem;flex-wrap:wrap;">';
+        html += '<span style="padding:0.25rem 0.75rem;background:#dcfce7;border-radius:4px;font-size:0.85rem;">Strong/Favorable</span>';
+        html += '<span style="padding:0.25rem 0.75rem;background:#fef9c3;border-radius:4px;font-size:0.85rem;">Moderate</span>';
+        html += '<span style="padding:0.25rem 0.75rem;background:#fed7aa;border-radius:4px;font-size:0.85rem;">Challenging</span>';
+        html += '<span style="padding:0.25rem 0.75rem;background:#fecaca;border-radius:4px;font-size:0.85rem;">Difficult</span>';
+        html += '</div>';
+
+        return html;
+    }
+
+    function getAverageScoreForYear(forecast, yearStartJD, yearEndJD) {
+        var totalScore = 0;
+        var totalDays = 0;
+
+        for (var i = 0; i < forecast.length; i++) {
+            var period = forecast[i];
+            // Find overlap between period and the year
+            var overlapStart = Math.max(period.startJD, yearStartJD);
+            var overlapEnd = Math.min(period.endJD, yearEndJD);
+
+            if (overlapStart < overlapEnd) {
+                var days = overlapEnd - overlapStart;
+                totalScore += period.score * days;
+                totalDays += days;
+            }
+        }
+
+        return totalDays > 0 ? totalScore / totalDays : 0;
     }
 
     function renderHealthPlaceholder() {

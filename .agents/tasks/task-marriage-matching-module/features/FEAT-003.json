@@ -2,7 +2,7 @@
   "id": "FEAT-003",
   "type": "feat",
   "description": "Implement Vimshottari Dasha marriage timeline prediction, 20-year Dasha/transit relationship forecast showing strength and weakness periods, and transit analysis engine.",
-  "status": "pending",
+  "status": "completed",
   "steps": [
     "Create js/dasha.js implementing: (a) Complete Vimshottari Dasha system - Mahadasha (major period) for all 9 planets with correct year durations (Ketu 7, Venus 20, Sun 6, Moon 10, Mars 7, Rahu 18, Jupiter 16, Saturn 19, Mercury 17). (b) Antardasha (sub-period) calculation within each Mahadasha. (c) Pratyantardasha (sub-sub-period) calculation. (d) Birth star-based Dasha starting point calculation. (e) Marriage timeline prediction logic: identify Dasha periods where 7th house significators are active (planets connected to 2nd, 7th, 11th houses running their period). (f) Find the nearest marriage window based on current running Dasha-Antardasha-Pratyantardasha.",
     "Create js/transit.js implementing: (a) Approximate planetary transit positions for any future date (simplified ephemeris for 20-year projections). (b) Transit aspects to natal positions (conjunction, opposition, trine, square, sextile). (c) Saturn transit analysis (Sade Sati, transit over 7th house). (d) Jupiter transit analysis (transit over 7th, aspects to Venus/7th lord). (e) Rahu-Ketu transit axis analysis relative to 1-7 axis. (f) Double transit theory (Jupiter + Saturn both influencing marriage houses).",
@@ -24,5 +24,5 @@
     "Check that transit analysis references actual planetary positions"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "Implemented js/dasha.js (marriage timeline prediction using KP significators of houses 2,7,11) and js/transit.js (Saturn, Jupiter, Rahu-Ketu transit analysis with double transit theory). The dasha.js module builds on AstroCore's existing calculateDasha/calculateAntardasha/calculatePratyantardasha functions, adding marriage scoring logic. Transit module uses AstroCore.calculatePlanetLongitude for accurate future positions. App.js now renders full Marriage Timeline tab (current periods, transit conditions, significators, overlapping windows) and 20-Year Forecast tab (period-by-period table with color coding, combined Dasha+Transit scores, yearly summary). CSS updated with strength rating badge classes. All JS files pass syntax checks and integration tests confirm correct computation of Dasha sequences, marriage windows, transit scores, and double transit detection."
 }
