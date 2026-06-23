@@ -804,6 +804,60 @@
     }
   });
 
+  $('downloadHtml').addEventListener('click', async () => {
+    if (!state.results) { alert('Please generate a report first (Tab 1).'); return; }
+    const reportHtml = $('report-content').innerHTML;
+    // Try to inline the stylesheet so the file renders standalone/offline
+    let css = '';
+    try {
+      const res = await fetch('css/styles.css');
+      if (res.ok) css = await res.text();
+    } catch (e) { /* fallback to minimal inline styles below */ }
+
+    const boyName = esc(state.boy.meta.name);
+    const girlName = esc(state.girl.meta.name);
+    const dateStr = new Date().toLocaleString();
+    const fileName = `Marriage-Report-${state.boy.meta.name}-${state.girl.meta.name}.html`.replace(/\s+/g, '_');
+
+    const doc = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Marriage Compatibility Report — ${boyName} & ${girlName}</title>
+<style>
+${css}
+/* standalone overrides so the report is readable on its own */
+body { padding: 24px; max-width: 1000px; margin: 0 auto; }
+.tab-panel, #report-content { display: block !important; }
+.report-meta { color: var(--muted, #9aa3b2); font-size: 12px; margin-bottom: 18px; text-align:center; }
+@media print { body { background:#fff; color:#111; } }
+</style>
+</head>
+<body>
+<header class="app-header" style="border-radius:14px;margin-bottom:18px">
+  <h1><span class="om">&#x0950;</span> Vedic Marriage Matching Report</h1>
+  <p>${boyName} &amp; ${girlName}</p>
+</header>
+<div class="report-meta">Generated ${esc(dateStr)} — Vedic Marriage Matching Module (BPHS &amp; KP)</div>
+<div id="report-content">${reportHtml}</div>
+<p class="footer-note" style="text-align:center;margin-top:24px;opacity:.7;font-size:11.5px">
+  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v4.2
+</p>
+</body>
+</html>`;
+
+    const blob = new Blob([doc], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
+
   /* ---------------- GeoCity autocomplete initialization ---------------- */
   if (typeof GeoCity !== 'undefined') {
     GeoCity.attach('b_place', 'b_lat', 'b_lon', 'b_tz');
