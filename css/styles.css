@@ -55,6 +55,7 @@ header.app-header {
   position: relative; z-index: 1;
   padding: 26px 30px 18px;
   border-bottom: 1px solid var(--border);
+  text-align: center;
   background:
     radial-gradient(800px 150px at 10% -30%, rgba(123,92,255,.25), transparent),
     radial-gradient(600px 150px at 60% -20%, rgba(255,77,138,.15), transparent),
@@ -64,7 +65,7 @@ header.app-header {
 }
 .app-header h1 {
   margin: 0; font-size: 26px; letter-spacing: .3px;
-  display: flex; align-items: center; gap: 12px;
+  display: flex; align-items: center; justify-content: center; gap: 12px;
   background: linear-gradient(135deg, var(--accent), var(--accent-2), var(--accent-3));
   -webkit-background-clip: text; -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -76,7 +77,16 @@ header.app-header {
   background-clip: text;
   filter: drop-shadow(0 0 8px rgba(255,194,51,.5));
 }
-.app-header p { margin: 8px 0 0; color: var(--muted); font-size: 13px; max-width: 900px; }
+.app-header p { margin: 8px auto 0; color: var(--muted); font-size: 13px; max-width: 900px; }
+
+/* Developer credit — visible on screen, print and PDF */
+.dev-credit {
+  margin: 8px 0 0; font-size: 13px; font-weight: 600;
+  color: var(--accent); letter-spacing: .2px;
+}
+.dev-credit a { color: var(--accent-4); text-decoration: none; }
+.dev-credit a:hover { text-decoration: underline; }
+.footer-credit { text-align: center; margin-top: 6px; }
 
 .container { max-width: 1200px; margin: 0 auto; padding: 18px 22px 60px; position: relative; z-index: 1; }
 
@@ -306,6 +316,8 @@ td.num, th.num { text-align: right; }
   .muted{ color:#555; }
   .big-score { -webkit-text-fill-color: #b87a00; filter: none; background: none; }
   #report-content { display:block !important; }
+  .dev-credit { color:#5b3fb0 !important; opacity:1 !important; }
+  .dev-credit a { color:#5b3fb0 !important; }
 }
 
 #report-content table { font-size: 12px; }
@@ -371,6 +383,8 @@ td.num, th.num { text-align: right; }
 .pdf-render .chart-svg .chart-title { fill: #5b3fb0 !important; }
 .pdf-render .report-section { page-break-before: always; }
 .pdf-render .kv span:last-child { color: #1a1a1a !important; }
+.pdf-render .dev-credit { color: #5b3fb0 !important; }
+.pdf-render .dev-credit b { color: #5b3fb0 !important; }
 
 /* Bhava house-by-house comparison */
 .bhava-house-card { margin-bottom: 22px; }

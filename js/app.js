@@ -778,6 +778,7 @@
         <p class="small muted" style="margin-top:10px">This report contains the complete analysis: visual charts (D1/D9/KP),
           house-by-house matching, BPHS &amp; KP assessments, Koota matching, marriage timing, the 20-year forecast,
           transits, health compatibility and Sarvashtakavarga.</p>
+        <p class="dev-credit" style="margin-top:10px">Developed by <b>Dr. Anil Sabaji</b> &nbsp;•&nbsp; Email: anilsabaji@gmail.com</p>
       </div>
 
       ${section('1 · Charts (D1, D9, KP)', 'charts')}
@@ -791,7 +792,8 @@
       ${section('9 · Health Compatibility', 'health')}
       ${section('10 · Sarvashtakavarga (SAV)', 'sarvashtaka')}
 
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v4.4</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v4.6</p>
+      <p class="dev-credit footer-credit">Developed by <b>Dr. Anil Sabaji</b> &nbsp;•&nbsp; Email: anilsabaji@gmail.com</p>
     `;
   }
   function tableFromAshta(a) {
@@ -866,8 +868,9 @@ body { padding: 24px; max-width: 1000px; margin: 0 auto; }
 <div class="report-meta">Generated ${esc(dateStr)} — Vedic Marriage Matching Module (BPHS &amp; KP)</div>
 <div id="report-content">${reportHtml}</div>
 <p class="footer-note" style="text-align:center;margin-top:24px;opacity:.7;font-size:11.5px">
-  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v4.2
+  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v4.6
 </p>
+<p class="dev-credit footer-credit">Developed by <b>Dr. Anil Sabaji</b> &nbsp;•&nbsp; Email: anilsabaji@gmail.com</p>
 </body>
 </html>`;
 
