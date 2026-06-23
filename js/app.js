@@ -1,954 +1,812 @@
-/**
- * App.js - Main Application Controller
- * Handles tab switching, form handling, and orchestration of calculations
- */
-(function() {
-    'use strict';
+/* =============================================================================
+ * app.js  —  UI orchestration, rendering and PDF export
+ * ========================================================================== */
+(function () {
+  'use strict';
 
-    // Application state
-    var appState = {
-        boyChart: null,
-        girlChart: null,
-        boyName: '',
-        girlName: '',
-        calculated: false
+  const state = { boy: null, girl: null, results: null, fromJd: null };
+
+  /* ---------------- helpers ---------------- */
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  const fix = (n, d = 2) => Number(n).toFixed(d);
+
+  function chip(label, cls) { return `<span class="chip ${cls || ''}">${esc(label)}</span>`; }
+  function gauge(label, val, max, cls) {
+    const pct = Math.round((val / max) * 100);
+    const c = cls || (pct >= 60 ? 'good' : pct >= 42 ? 'mid' : 'bad');
+    return `<div class="gauge"><div class="lbl"><span>${esc(label)}</span><span>${val}/${max}</span></div>
+      <div class="bar"><div class="fill ${c}" style="width:${pct}%"></div></div></div>`;
+  }
+  function gaugePct(label, pct, cls) {
+    const c = cls || (pct >= 60 ? 'good' : pct >= 42 ? 'mid' : 'bad');
+    return `<div class="gauge"><div class="lbl"><span>${esc(label)}</span><span>${pct}%</span></div>
+      <div class="bar"><div class="fill ${c}" style="width:${pct}%"></div></div></div>`;
+  }
+  function degStr(deg) {
+    const d = Math.floor(deg); const m = Math.floor((deg - d) * 60);
+    return `${d}°${String(m).padStart(2, '0')}'`;
+  }
+
+  /* ---------------- tabs ---------------- */
+  function setTab(name) {
+    document.querySelectorAll('.tab-btn').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
+    document.querySelectorAll('.tab-panel').forEach((p) => p.classList.toggle('active', p.id === 'tab-' + name));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  $('tabs').addEventListener('click', (e) => {
+    const btn = e.target.closest('.tab-btn');
+    if (btn) setTab(btn.dataset.tab);
+  });
+
+  /* ---------------- input ---------------- */
+  function readInput(prefix) {
+    const v = (id) => parseFloat($(prefix + id).value);
+    return {
+      name: $(prefix + 'name').value || (prefix === 'b_' ? 'Groom' : 'Bride'),
+      place: $(prefix + 'place').value,
+      y: v('y'), m: v('m'), d: v('d'),
+      hour: v('h'), min: v('min'), sec: 0,
+      tzOffsetHours: v('tz'), lat: v('lat'), lonEast: v('lon'),
     };
+  }
 
-    // ===== Tab Navigation =====
-    function initTabs() {
-        var tabBtns = document.querySelectorAll('.tab-btn');
-        tabBtns.forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                var tabId = this.getAttribute('data-tab');
-                switchTab(tabId);
-            });
-        });
+  $('loadSample').addEventListener('click', () => {
+    const set = (id, val) => ($(id).value = val);
+    set('b_name', 'Arjun'); set('b_y', 1990); set('b_m', 6); set('b_d', 15);
+    set('b_h', 10); set('b_min', 30); set('b_tz', 5.5); set('b_lat', 19.07); set('b_lon', 72.87); set('b_place', 'Mumbai, India');
+    set('g_name', 'Priya'); set('g_y', 1993); set('g_m', 11); set('g_d', 22);
+    set('g_h', 14); set('g_min', 15); set('g_tz', 5.5); set('g_lat', 28.61); set('g_lon', 77.21); set('g_place', 'New Delhi, India');
+  });
+
+  $('matchForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    try {
+      generate();
+    } catch (err) {
+      alert('Calculation error: ' + err.message);
+      console.error(err);
     }
-
-    function switchTab(tabId) {
-        // Remove active from all buttons and panels
-        document.querySelectorAll('.tab-btn').forEach(function(btn) {
-            btn.classList.remove('active');
-        });
-        document.querySelectorAll('.tab-panel').forEach(function(panel) {
-            panel.classList.remove('active');
-        });
-
-        // Activate selected
-        var btn = document.querySelector('.tab-btn[data-tab="' + tabId + '"]');
-        var panel = document.getElementById('tab-' + tabId);
-
-        if (btn) btn.classList.add('active');
-        if (panel) panel.classList.add('active');
-    }
-
-    // ===== Form Handling =====
-    function initForm() {
-        var form = document.getElementById('birth-details-form');
-        if (form) {
-            form.addEventListener('submit', function(e) {
-                e.preventDefault();
-                handleFormSubmit();
-            });
-        }
-    }
-
-    function handleFormSubmit() {
-        var statusEl = document.getElementById('input-status');
-
-        try {
-            // Get boy's details
-            var boyName = document.getElementById('boy-name').value.trim();
-            var boyDob = document.getElementById('boy-dob').value;
-            var boyTob = document.getElementById('boy-tob').value;
-            var boyLat = parseFloat(document.getElementById('boy-lat').value);
-            var boyLng = parseFloat(document.getElementById('boy-lng').value);
-            var boyTz = parseFloat(document.getElementById('boy-tz').value);
-
-            // Get girl's details
-            var girlName = document.getElementById('girl-name').value.trim();
-            var girlDob = document.getElementById('girl-dob').value;
-            var girlTob = document.getElementById('girl-tob').value;
-            var girlLat = parseFloat(document.getElementById('girl-lat').value);
-            var girlLng = parseFloat(document.getElementById('girl-lng').value);
-            var girlTz = parseFloat(document.getElementById('girl-tz').value);
-
-            // Parse dates and times
-            var boyDateParts = boyDob.split('-');
-            var boyTimeParts = boyTob.split(':');
-            var girlDateParts = girlDob.split('-');
-            var girlTimeParts = girlTob.split(':');
-
-            // Calculate charts
-            appState.boyChart = AstroCore.calculateChart(
-                parseInt(boyDateParts[0]), parseInt(boyDateParts[1]), parseInt(boyDateParts[2]),
-                parseInt(boyTimeParts[0]), parseInt(boyTimeParts[1]), parseInt(boyTimeParts[2] || 0),
-                boyLat, boyLng, boyTz
-            );
-
-            appState.girlChart = AstroCore.calculateChart(
-                parseInt(girlDateParts[0]), parseInt(girlDateParts[1]), parseInt(girlDateParts[2]),
-                parseInt(girlTimeParts[0]), parseInt(girlTimeParts[1]), parseInt(girlTimeParts[2] || 0),
-                girlLat, girlLng, girlTz
-            );
-
-            appState.boyName = boyName;
-            appState.girlName = girlName;
-            appState.calculated = true;
-
-            // Render results
-            renderBhavaAnalysis();
-            renderBPHSAssessment();
-            renderKPAssessment();
-            renderMarriageTimeline();
-            renderForecast();
-            renderHealthPlaceholder();
-            renderAshtakootaPlaceholder();
-            renderDashakootaPlaceholder();
-
-            // Enable PDF button
-            var pdfBtn = document.getElementById('generate-pdf');
-            if (pdfBtn) pdfBtn.disabled = false;
-            var pdfStatus = document.getElementById('pdf-status');
-            if (pdfStatus) pdfStatus.textContent = 'Calculations complete. Click the button to generate PDF.';
-
-            // Show success
-            showStatus(statusEl, 'success', 'Charts calculated successfully! Navigate to other tabs to see the analysis.');
-
-        } catch (error) {
-            showStatus(statusEl, 'error', 'Error calculating charts: ' + error.message);
-            console.error('Calculation error:', error);
-        }
-    }
-
-    function showStatus(el, type, message) {
-        if (!el) return;
-        el.className = 'status-message ' + type;
-        el.textContent = message;
-    }
-
-    // ===== Utility Functions =====
-    function formatDegree(deg) {
-        var d = Math.floor(deg);
-        var m = Math.floor((deg - d) * 60);
-        var s = Math.floor(((deg - d) * 60 - m) * 60);
-        return d + '\u00B0 ' + m + "' " + s + '"';
-    }
-
-    function getPlanetsInHouse(chart, houseNum) {
-        var result = [];
-        var planetNames = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'];
-        planetNames.forEach(function(name) {
-            if (chart.planets[name].house === houseNum) result.push(name);
-        });
-        return result.length > 0 ? result.join(', ') : '-';
-    }
-
-    function getAspectsOnHouse(chart, houseNum) {
-        // Vedic aspects: each planet aspects the 7th house from itself
-        // Mars also aspects 4th and 8th; Jupiter 5th and 9th; Saturn 3rd and 10th
-        var aspects = [];
-        var planetNames = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'];
-
-        planetNames.forEach(function(name) {
-            var pH = chart.planets[name].house;
-            var aspectedHouses = [];
-            // All planets aspect 7th from themselves
-            aspectedHouses.push(((pH - 1 + 6) % 12) + 1);
-            // Special aspects
-            if (name === 'Mars') {
-                aspectedHouses.push(((pH - 1 + 3) % 12) + 1); // 4th
-                aspectedHouses.push(((pH - 1 + 7) % 12) + 1); // 8th
-            } else if (name === 'Jupiter') {
-                aspectedHouses.push(((pH - 1 + 4) % 12) + 1); // 5th
-                aspectedHouses.push(((pH - 1 + 8) % 12) + 1); // 9th
-            } else if (name === 'Saturn') {
-                aspectedHouses.push(((pH - 1 + 2) % 12) + 1); // 3rd
-                aspectedHouses.push(((pH - 1 + 9) % 12) + 1); // 10th
-            }
-            if (aspectedHouses.indexOf(houseNum) !== -1) {
-                aspects.push(name);
-            }
-        });
-        return aspects.length > 0 ? aspects.join(', ') : '-';
-    }
-
-    // ===== Render Bhava/House Analysis (Comprehensive) =====
-    function renderBhavaAnalysis() {
-        var container = document.getElementById('bhava-content');
-        if (!container) return;
-
-        var html = '';
-
-        // Planetary Positions - Side by Side
-        html += '<h3>Planetary Positions</h3>';
-        html += '<div class="form-row">';
-        html += '<div class="form-section"><h3>Boy (' + appState.boyName + ')</h3>';
-        html += renderPlanetTable(appState.boyChart);
-        html += '</div>';
-        html += '<div class="form-section"><h3>Girl (' + appState.girlName + ')</h3>';
-        html += renderPlanetTable(appState.girlChart);
-        html += '</div></div>';
-
-        // Comprehensive House Analysis - Side by Side
-        html += '<h3 class="mt-3">Comprehensive House Analysis (Side by Side)</h3>';
-        html += renderComprehensiveHouseTable();
-
-        container.innerHTML = html;
-    }
-
-    function renderPlanetTable(chart) {
-        var html = '<table class="data-table">';
-        html += '<thead><tr><th>Planet</th><th>Longitude</th><th>Rashi</th><th>Nakshatra</th><th>Pada</th><th>House</th><th>Lord</th></tr></thead>';
-        html += '<tbody>';
-
-        var planetNames = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'];
-        planetNames.forEach(function(name) {
-            var p = chart.planets[name];
-            html += '<tr>';
-            html += '<td><strong>' + name + '</strong></td>';
-            html += '<td>' + formatDegree(p.sidereal) + '</td>';
-            html += '<td>' + p.rashi + '</td>';
-            html += '<td>' + p.nakshatra + '</td>';
-            html += '<td>' + p.pada + '</td>';
-            html += '<td>' + p.house + '</td>';
-            html += '<td>' + p.rashiLord + '</td>';
-            html += '</tr>';
-        });
-
-        html += '</tbody></table>';
-        return html;
-    }
-
-    function renderComprehensiveHouseTable() {
-        var boyChart = appState.boyChart;
-        var girlChart = appState.girlChart;
-
-        // Get KP cusp sub-lords
-        var boyCusps = KP.getCuspSubLords(boyChart);
-        var girlCusps = KP.getCuspSubLords(girlChart);
-
-        var html = '<table class="data-table">';
-        html += '<thead><tr>';
-        html += '<th>House</th>';
-        html += '<th colspan="6" style="text-align:center;background:#3b0764;">Boy (' + appState.boyName + ')</th>';
-        html += '<th colspan="6" style="text-align:center;background:#1e3a5f;">Girl (' + appState.girlName + ')</th>';
-        html += '</tr>';
-        html += '<tr>';
-        html += '<th>#</th>';
-        // Boy columns
-        html += '<th>Sign</th><th>Cusp</th><th>Lord</th><th>Star Lord</th><th>Planets</th><th>Aspects</th>';
-        // Girl columns
-        html += '<th>Sign</th><th>Cusp</th><th>Lord</th><th>Star Lord</th><th>Planets</th><th>Aspects</th>';
-        html += '</tr></thead>';
-        html += '<tbody>';
-
-        for (var i = 0; i < 12; i++) {
-            var bh = boyChart.houses.houses[i];
-            var gh = girlChart.houses.houses[i];
-            var bc = boyCusps[i];
-            var gc = girlCusps[i];
-
-            html += '<tr>';
-            html += '<td><strong>' + (i + 1) + '</strong></td>';
-            // Boy
-            html += '<td>' + bh.rashi + '</td>';
-            html += '<td>' + formatDegree(bh.cusp) + '</td>';
-            html += '<td>' + bh.lord + '</td>';
-            html += '<td>' + bc.starLord + '</td>';
-            html += '<td>' + getPlanetsInHouse(boyChart, i + 1) + '</td>';
-            html += '<td>' + getAspectsOnHouse(boyChart, i + 1) + '</td>';
-            // Girl
-            html += '<td>' + gh.rashi + '</td>';
-            html += '<td>' + formatDegree(gh.cusp) + '</td>';
-            html += '<td>' + gh.lord + '</td>';
-            html += '<td>' + gc.starLord + '</td>';
-            html += '<td>' + getPlanetsInHouse(girlChart, i + 1) + '</td>';
-            html += '<td>' + getAspectsOnHouse(girlChart, i + 1) + '</td>';
-            html += '</tr>';
-        }
-
-        html += '</tbody></table>';
-        return html;
-    }
-
-    // ===== Placeholder renderers for features to be implemented in later FEATs =====
-    function renderBPHSAssessment() {
-        var container = document.getElementById('bphs-content');
-        if (!container) return;
-
-        var html = '';
-        var compatibility = BPHS.assessCompatibility(appState.boyChart, appState.girlChart);
-
-        // Overall Score
-        html += '<div class="result-grid">';
-        html += '<div class="result-card"><h4>Boy BPHS Score</h4><div class="value">' + compatibility.boyScore + '%</div></div>';
-        html += '<div class="result-card"><h4>Girl BPHS Score</h4><div class="value">' + compatibility.girlScore + '%</div></div>';
-        html += '<div class="result-card"><h4>Overall Compatibility</h4><div class="value">' + compatibility.overallScore + '%</div></div>';
-        html += '</div>';
-
-        // Score Bar
-        html += '<div class="score-label"><span>BPHS Compatibility</span><span>' + compatibility.overallScore + '%</span></div>';
-        html += '<div class="score-bar"><div class="score-bar-fill" style="width:' + compatibility.overallScore + '%"></div></div>';
-        html += '<p class="mt-2"><strong>Verdict:</strong> ' + compatibility.verdict + '</p>';
-
-        // House Significations Table
-        html += '<h3 class="mt-3">House Significations (BPHS)</h3>';
-        html += '<table class="data-table">';
-        html += '<thead><tr><th>House</th><th>Name</th><th>Keywords</th><th>Marriage Significance</th></tr></thead>';
-        html += '<tbody>';
-        for (var h = 1; h <= 12; h++) {
-            var sig = BPHS.HOUSE_SIGNIFICATIONS[h];
-            html += '<tr>';
-            html += '<td><strong>' + h + '</strong></td>';
-            html += '<td>' + sig.name + '</td>';
-            html += '<td>' + sig.keywords.join(', ') + '</td>';
-            html += '<td>' + sig.marriage + '</td>';
-            html += '</tr>';
-        }
-        html += '</tbody></table>';
-
-        // Planet-House Analysis
-        html += '<h3 class="mt-3">Planet-in-House Analysis (Boy - ' + appState.boyName + ')</h3>';
-        html += renderPlanetHouseAnalysis(appState.boyChart);
-        html += '<h3 class="mt-3">Planet-in-House Analysis (Girl - ' + appState.girlName + ')</h3>';
-        html += renderPlanetHouseAnalysis(appState.girlChart);
-
-        // House Lord Placement
-        html += '<h3 class="mt-3">House Lord Placement Analysis</h3>';
-        html += '<div class="form-row">';
-        html += '<div class="form-section"><h3>Boy (' + appState.boyName + ')</h3>';
-        html += renderHouseLordTable(appState.boyChart);
-        html += '</div>';
-        html += '<div class="form-section"><h3>Girl (' + appState.girlName + ')</h3>';
-        html += renderHouseLordTable(appState.girlChart);
-        html += '</div></div>';
-
-        // Marriage Yogas
-        html += '<h3 class="mt-3">Marriage-Relevant Yogas (Boy)</h3>';
-        html += renderYogaTable(compatibility.boyYogas);
-        html += '<h3 class="mt-3">Marriage-Relevant Yogas (Girl)</h3>';
-        html += renderYogaTable(compatibility.girlYogas);
-
-        // Cross-Chart Factors
-        if (compatibility.crossFactors.length > 0) {
-            html += '<h3 class="mt-3">Cross-Chart Compatibility Factors</h3>';
-            html += '<table class="data-table">';
-            html += '<thead><tr><th>Factor</th><th>Effect</th><th>Score</th></tr></thead>';
-            html += '<tbody>';
-            compatibility.crossFactors.forEach(function(f) {
-                html += '<tr><td><strong>' + f.factor + '</strong></td><td>' + f.effect + '</td><td>' + (f.score > 0 ? '+' : '') + f.score + '</td></tr>';
-            });
-            html += '</tbody></table>';
-        }
-
-        container.innerHTML = html;
-    }
-
-    function renderPlanetHouseAnalysis(chart) {
-        var analysis = BPHS.getPlanetHouseAnalysis(chart);
-        var html = '<table class="data-table">';
-        html += '<thead><tr><th>Planet</th><th>House</th><th>Rashi</th><th>Marriage Effect</th></tr></thead>';
-        html += '<tbody>';
-        analysis.forEach(function(a) {
-            html += '<tr>';
-            html += '<td><strong>' + a.planet + '</strong></td>';
-            html += '<td>' + a.house + '</td>';
-            html += '<td>' + a.rashi + '</td>';
-            html += '<td>' + a.effect + '</td>';
-            html += '</tr>';
-        });
-        html += '</tbody></table>';
-        return html;
-    }
-
-    function renderHouseLordTable(chart) {
-        var analysis = BPHS.analyzeHouseLords(chart);
-        var html = '<table class="data-table">';
-        html += '<thead><tr><th>House</th><th>Lord</th><th>In House</th><th>In Rashi</th><th>Marriage Relevance</th></tr></thead>';
-        html += '<tbody>';
-        analysis.forEach(function(a) {
-            html += '<tr>';
-            html += '<td>' + a.house + '</td>';
-            html += '<td><strong>' + a.lord + '</strong></td>';
-            html += '<td>' + a.lordHouse + '</td>';
-            html += '<td>' + a.lordRashi + '</td>';
-            html += '<td>' + a.marriageRelevance + '</td>';
-            html += '</tr>';
-        });
-        html += '</tbody></table>';
-        return html;
-    }
-
-    function renderYogaTable(yogas) {
-        if (yogas.length === 0) return '<p>No specific marriage yogas found.</p>';
-        var html = '<table class="data-table">';
-        html += '<thead><tr><th>Yoga</th><th>Description</th><th>Strength</th><th>Score</th></tr></thead>';
-        html += '<tbody>';
-        yogas.forEach(function(y) {
-            var cls = y.strength === 'Positive' ? 'text-success' : (y.strength === 'Negative' ? 'text-error' : 'text-warning');
-            html += '<tr>';
-            html += '<td><strong>' + y.name + '</strong></td>';
-            html += '<td>' + y.description + '</td>';
-            html += '<td class="' + cls + '">' + y.strength + '</td>';
-            html += '<td>' + (y.score > 0 ? '+' : '') + y.score + '</td>';
-            html += '</tr>';
-        });
-        html += '</tbody></table>';
-        return html;
-    }
-
-    function renderKPAssessment() {
-        var container = document.getElementById('kp-content');
-        if (!container) return;
-
-        var html = '';
-        var assessment = KP.assessMarriageKP(appState.boyChart, appState.girlChart);
-
-        // KP Score
-        html += '<div class="result-grid">';
-        html += '<div class="result-card"><h4>KP Marriage Score</h4><div class="value">' + assessment.kpScore + '%</div></div>';
-        html += '<div class="result-card"><h4>Boy Promise</h4><div class="value">' + (assessment.boyPromise.marriagePromised ? 'Yes' : 'Weak') + '</div></div>';
-        html += '<div class="result-card"><h4>Girl Promise</h4><div class="value">' + (assessment.girlPromise.marriagePromised ? 'Yes' : 'Weak') + '</div></div>';
-        html += '</div>';
-
-        html += '<div class="score-label"><span>KP Marriage Assessment</span><span>' + assessment.kpScore + '%</span></div>';
-        html += '<div class="score-bar"><div class="score-bar-fill" style="width:' + assessment.kpScore + '%"></div></div>';
-        html += '<p class="mt-2"><strong>Verdict:</strong> ' + assessment.verdict + '</p>';
-
-        // Cusp Sub-Lord Table for Boy
-        html += '<h3 class="mt-3">Cusp Sub-Lord Table (Boy - ' + appState.boyName + ')</h3>';
-        html += renderCuspSubLordTable(appState.boyChart);
-
-        // Cusp Sub-Lord Table for Girl
-        html += '<h3 class="mt-3">Cusp Sub-Lord Table (Girl - ' + appState.girlName + ')</h3>';
-        html += renderCuspSubLordTable(appState.girlChart);
-
-        // 7th Cusp Analysis
-        html += '<h3 class="mt-3">7th Cusp Sub-Lord Analysis</h3>';
-        html += '<div class="form-row">';
-        html += '<div class="form-section"><h3>Boy</h3>';
-        html += '<p><strong>7th Cusp Sign Lord:</strong> ' + assessment.boyPromise.cusp7SignLord + '</p>';
-        html += '<p><strong>7th Cusp Star Lord:</strong> ' + assessment.boyPromise.cusp7StarLord + '</p>';
-        html += '<p><strong>7th Cusp Sub Lord:</strong> ' + assessment.boyPromise.cusp7SubLord + '</p>';
-        html += '<p class="mt-1"><strong>Positive Signification (2,7,11):</strong> ' + (assessment.boyPromise.positiveSignification.length > 0 ? 'Houses ' + assessment.boyPromise.positiveSignification.join(', ') : 'None') + '</p>';
-        html += '<p><strong>Negative Signification (1,6,10,12):</strong> ' + (assessment.boyPromise.negativeSignification.length > 0 ? 'Houses ' + assessment.boyPromise.negativeSignification.join(', ') : 'None') + '</p>';
-        html += '<p class="mt-1"><strong>' + assessment.boyPromise.verdict + '</strong></p>';
-        html += '</div>';
-        html += '<div class="form-section"><h3>Girl</h3>';
-        html += '<p><strong>7th Cusp Sign Lord:</strong> ' + assessment.girlPromise.cusp7SignLord + '</p>';
-        html += '<p><strong>7th Cusp Star Lord:</strong> ' + assessment.girlPromise.cusp7StarLord + '</p>';
-        html += '<p><strong>7th Cusp Sub Lord:</strong> ' + assessment.girlPromise.cusp7SubLord + '</p>';
-        html += '<p class="mt-1"><strong>Positive Signification (2,7,11):</strong> ' + (assessment.girlPromise.positiveSignification.length > 0 ? 'Houses ' + assessment.girlPromise.positiveSignification.join(', ') : 'None') + '</p>';
-        html += '<p><strong>Negative Signification (1,6,10,12):</strong> ' + (assessment.girlPromise.negativeSignification.length > 0 ? 'Houses ' + assessment.girlPromise.negativeSignification.join(', ') : 'None') + '</p>';
-        html += '<p class="mt-1"><strong>' + assessment.girlPromise.verdict + '</strong></p>';
-        html += '</div></div>';
-
-        // Significator Analysis for Houses 2, 7, 11
-        html += '<h3 class="mt-3">Significator Analysis for Marriage Houses (2, 7, 11)</h3>';
-        html += '<div class="form-row">';
-        html += '<div class="form-section"><h3>Boy</h3>';
-        html += renderSignificatorTable(KP.getMarriageHouseSignificators(appState.boyChart));
-        html += '</div>';
-        html += '<div class="form-section"><h3>Girl</h3>';
-        html += renderSignificatorTable(KP.getMarriageHouseSignificators(appState.girlChart));
-        html += '</div></div>';
-
-        // Marriage Significators (strongest planets)
-        html += '<h3 class="mt-3">Strongest Marriage Significators</h3>';
-        html += '<div class="form-row">';
-        html += '<div class="form-section"><h3>Boy</h3>';
-        html += renderMarriageSignificators(assessment.boyPromise.marriageSignificators);
-        html += '</div>';
-        html += '<div class="form-section"><h3>Girl</h3>';
-        html += renderMarriageSignificators(assessment.girlPromise.marriageSignificators);
-        html += '</div></div>';
-
-        // Ruling Planets
-        html += '<h3 class="mt-3">Ruling Planets at Birth</h3>';
-        html += '<div class="form-row">';
-        html += '<div class="form-section"><h3>Boy</h3>';
-        html += renderRulingPlanets(assessment.boyRuling);
-        html += '</div>';
-        html += '<div class="form-section"><h3>Girl</h3>';
-        html += renderRulingPlanets(assessment.girlRuling);
-        html += '</div></div>';
-
-        container.innerHTML = html;
-    }
-
-    function renderCuspSubLordTable(chart) {
-        var cusps = KP.getCuspSubLords(chart);
-        var html = '<table class="data-table">';
-        html += '<thead><tr><th>House</th><th>Cusp Degree</th><th>Sign</th><th>Sign Lord</th><th>Star Lord</th><th>Sub Lord</th></tr></thead>';
-        html += '<tbody>';
-        cusps.forEach(function(c) {
-            html += '<tr>';
-            html += '<td><strong>' + c.house + '</strong></td>';
-            html += '<td>' + formatDegree(c.cuspDegree) + '</td>';
-            html += '<td>' + c.signOnCusp + '</td>';
-            html += '<td>' + c.signLord + '</td>';
-            html += '<td>' + c.starLord + '</td>';
-            html += '<td><strong>' + c.subLord + '</strong></td>';
-            html += '</tr>';
-        });
-        html += '</tbody></table>';
-        return html;
-    }
-
-    function renderSignificatorTable(sigData) {
-        var html = '<table class="data-table">';
-        html += '<thead><tr><th>House</th><th>Significators</th><th>Through</th></tr></thead>';
-        html += '<tbody>';
-        [2, 7, 11].forEach(function(h) {
-            var planets = sigData[h];
-            if (planets.length > 0) {
-                planets.forEach(function(p, idx) {
-                    html += '<tr>';
-                    if (idx === 0) html += '<td rowspan="' + planets.length + '"><strong>' + h + '</strong></td>';
-                    html += '<td>' + p.planet + '</td>';
-                    html += '<td>' + p.through + '</td>';
-                    html += '</tr>';
-                });
-            } else {
-                html += '<tr><td><strong>' + h + '</strong></td><td colspan="2">No strong significators</td></tr>';
-            }
-        });
-        html += '</tbody></table>';
-        return html;
-    }
-
-    function renderMarriageSignificators(significators) {
-        if (significators.length === 0) return '<p>No strong marriage significators found.</p>';
-        var html = '<table class="data-table">';
-        html += '<thead><tr><th>Planet</th><th>Signifies Houses</th><th>Strength</th></tr></thead>';
-        html += '<tbody>';
-        significators.forEach(function(s) {
-            html += '<tr>';
-            html += '<td><strong>' + s.planet + '</strong></td>';
-            html += '<td>' + s.houses.join(', ') + '</td>';
-            html += '<td>' + s.strength + '/3</td>';
-            html += '</tr>';
-        });
-        html += '</tbody></table>';
-        return html;
-    }
-
-    function renderRulingPlanets(ruling) {
-        var html = '<table class="data-table">';
-        html += '<thead><tr><th>Role</th><th>Planet</th></tr></thead>';
-        html += '<tbody>';
-        ruling.details.forEach(function(rp) {
-            html += '<tr><td>' + rp.role + '</td><td><strong>' + rp.planet + '</strong></td></tr>';
-        });
-        html += '</tbody></table>';
-        html += '<p class="mt-1"><strong>Interpretation:</strong> ' + ruling.interpretation + '</p>';
-        return html;
-    }
-
-    function renderMarriageTimeline() {
-        var container = document.getElementById('timeline-content');
-        if (!container) return;
-
-        var nowJD = DashaTimeline.getNowJD();
-        var html = '';
-
-        // Current Dasha periods for both
-        var boyCurrentPeriod = DashaTimeline.getCurrentPeriod(appState.boyChart, nowJD);
-        var girlCurrentPeriod = DashaTimeline.getCurrentPeriod(appState.girlChart, nowJD);
-
-        // Marriage windows for both charts
-        var boyWindows = DashaTimeline.findNearestMarriageWindow(appState.boyChart, nowJD, 10);
-        var girlWindows = DashaTimeline.findNearestMarriageWindow(appState.girlChart, nowJD, 10);
-
-        // Find overlapping favorable periods
-        var overlaps = DashaTimeline.findOverlappingWindows(boyWindows, girlWindows);
-
-        // Transit analysis at current time
-        var boyTransitNow = Transit.getTransitMarriageScore(appState.boyChart, nowJD);
-        var girlTransitNow = Transit.getTransitMarriageScore(appState.girlChart, nowJD);
-
-        // Double transit analysis
-        var boyDoubleTransit = Transit.analyzeDoubleTransit(appState.boyChart, nowJD);
-        var girlDoubleTransit = Transit.analyzeDoubleTransit(appState.girlChart, nowJD);
-
-        // === Current Running Period ===
-        html += '<h3>Currently Running Dasha Periods</h3>';
-        html += '<div class="form-row">';
-        html += '<div class="form-section"><h3>Boy (' + appState.boyName + ')</h3>';
-        if (boyCurrentPeriod && boyCurrentPeriod.dasha) {
-            html += '<p><strong>Mahadasha:</strong> ' + boyCurrentPeriod.dasha.lord + ' (' + DashaTimeline.formatDate(boyCurrentPeriod.dasha.startDate) + ' to ' + DashaTimeline.formatDate(boyCurrentPeriod.dasha.endDate) + ')</p>';
-            if (boyCurrentPeriod.antardasha) {
-                html += '<p><strong>Antardasha:</strong> ' + boyCurrentPeriod.antardasha.lord + ' (' + DashaTimeline.formatDate(boyCurrentPeriod.antardasha.startDate) + ' to ' + DashaTimeline.formatDate(boyCurrentPeriod.antardasha.endDate) + ')</p>';
-            }
-            if (boyCurrentPeriod.pratyantardasha) {
-                html += '<p><strong>Pratyantardasha:</strong> ' + boyCurrentPeriod.pratyantardasha.lord + ' (' + DashaTimeline.formatDate(boyCurrentPeriod.pratyantardasha.startDate) + ' to ' + DashaTimeline.formatDate(boyCurrentPeriod.pratyantardasha.endDate) + ')</p>';
-            }
-        }
-        html += '</div>';
-        html += '<div class="form-section"><h3>Girl (' + appState.girlName + ')</h3>';
-        if (girlCurrentPeriod && girlCurrentPeriod.dasha) {
-            html += '<p><strong>Mahadasha:</strong> ' + girlCurrentPeriod.dasha.lord + ' (' + DashaTimeline.formatDate(girlCurrentPeriod.dasha.startDate) + ' to ' + DashaTimeline.formatDate(girlCurrentPeriod.dasha.endDate) + ')</p>';
-            if (girlCurrentPeriod.antardasha) {
-                html += '<p><strong>Antardasha:</strong> ' + girlCurrentPeriod.antardasha.lord + ' (' + DashaTimeline.formatDate(girlCurrentPeriod.antardasha.startDate) + ' to ' + DashaTimeline.formatDate(girlCurrentPeriod.antardasha.endDate) + ')</p>';
-            }
-            if (girlCurrentPeriod.pratyantardasha) {
-                html += '<p><strong>Pratyantardasha:</strong> ' + girlCurrentPeriod.pratyantardasha.lord + ' (' + DashaTimeline.formatDate(girlCurrentPeriod.pratyantardasha.startDate) + ' to ' + DashaTimeline.formatDate(girlCurrentPeriod.pratyantardasha.endDate) + ')</p>';
-            }
-        }
-        html += '</div></div>';
-
-        // === Current Transit Conditions ===
-        html += '<h3 class="mt-3">Current Transit Conditions</h3>';
-        html += '<div class="form-row">';
-        html += '<div class="form-section"><h3>Boy Transit Score: ' + boyTransitNow.score.toFixed(1) + '/10</h3>';
-        html += '<div class="score-bar"><div class="score-bar-fill" style="width:' + (boyTransitNow.score * 10) + '%"></div></div>';
-        if (boyTransitNow.factors.length > 0) {
-            html += '<ul style="margin-top:0.5rem;padding-left:1.5rem;">';
-            boyTransitNow.factors.forEach(function(f) { html += '<li>' + f + '</li>'; });
-            html += '</ul>';
-        }
-        html += '<p class="mt-1"><strong>Double Transit:</strong> ' + boyDoubleTransit.interpretation + '</p>';
-        html += '</div>';
-        html += '<div class="form-section"><h3>Girl Transit Score: ' + girlTransitNow.score.toFixed(1) + '/10</h3>';
-        html += '<div class="score-bar"><div class="score-bar-fill" style="width:' + (girlTransitNow.score * 10) + '%"></div></div>';
-        if (girlTransitNow.factors.length > 0) {
-            html += '<ul style="margin-top:0.5rem;padding-left:1.5rem;">';
-            girlTransitNow.factors.forEach(function(f) { html += '<li>' + f + '</li>'; });
-            html += '</ul>';
-        }
-        html += '<p class="mt-1"><strong>Double Transit:</strong> ' + girlDoubleTransit.interpretation + '</p>';
-        html += '</div></div>';
-
-        // === Marriage Significators Used ===
-        html += '<h3 class="mt-3">Marriage Significators (Planets Connected to Houses 2, 7, 11)</h3>';
-        html += '<div class="form-row">';
-        html += '<div class="form-section"><h3>Boy</h3>';
-        html += renderMarriageSignificatorSummary(appState.boyChart);
-        html += '</div>';
-        html += '<div class="form-section"><h3>Girl</h3>';
-        html += renderMarriageSignificatorSummary(appState.girlChart);
-        html += '</div></div>';
-
-        // === Overlapping Favorable Periods (Top Priority) ===
-        html += '<h3 class="mt-3">Overlapping Favorable Marriage Windows (Both Charts)</h3>';
-        if (overlaps.length > 0) {
-            html += '<p>The following periods are favorable for BOTH charts simultaneously:</p>';
-            html += '<table class="data-table">';
-            html += '<thead><tr><th>#</th><th>Period</th><th>Boy Period</th><th>Girl Period</th><th>Combined Score</th></tr></thead>';
-            html += '<tbody>';
-            var maxOverlaps = Math.min(overlaps.length, 10);
-            for (var o = 0; o < maxOverlaps; o++) {
-                var ov = overlaps[o];
-                var strength = DashaTimeline.getStrengthRating(ov.combinedScore);
-                html += '<tr>';
-                html += '<td>' + (o + 1) + '</td>';
-                html += '<td>' + DashaTimeline.formatDate(ov.startDate) + ' - ' + DashaTimeline.formatDate(ov.endDate) + '</td>';
-                html += '<td>' + ov.boyPeriod + '</td>';
-                html += '<td>' + ov.girlPeriod + '</td>';
-                html += '<td><span class="period-strength ' + strength.cssClass + '">' + ov.combinedScore.toFixed(1) + ' (' + strength.label + ')</span></td>';
-                html += '</tr>';
-            }
-            html += '</tbody></table>';
+    if (state.results) setTab('charts');
+  });
+
+  /* ---------------- generate ---------------- */
+  function generate() {
+    const bi = readInput('b_'); const gi = readInput('g_');
+    const boy = Astro.buildChart(bi); boy.meta = bi;
+    const girl = Astro.buildChart(gi); girl.meta = gi;
+    state.boy = boy; state.girl = girl;
+
+    const today = new Date();
+    state.fromJd = Astro.julianDay(today.getUTCFullYear(), today.getUTCMonth() + 1, today.getUTCDate(), 0);
+
+    const r = {};
+    r.koota = Koota.fullMatch(boy, girl);
+    r.bphs = BPHS.coupleAssessment(boy, girl);
+    r.kp = KP.coupleAssessment(boy, girl);
+    r.health = Health.compatibility(boy, girl);
+    r.window = Timeline.coupleMarriageWindow(boy, girl, state.fromJd);
+    r.forecast = Timeline.relationshipForecast(boy, girl, state.fromJd, 20);
+    r.bhavaB = BPHS.analyzeAll(boy);
+    r.bhavaG = BPHS.analyzeAll(girl);
+    r.kpB = KP.assess(boy); r.kpG = KP.assess(girl);
+    r.transitB = Transit.summary(boy, state.fromJd, 20);
+    r.transitG = Transit.summary(girl, state.fromJd, 20);
+    r.sarvashtaka = Sarvashtaka.coupleAnalysis(boy, girl);
+    state.results = r;
+
+    const safeRender = (fn, name) => { try { fn(); } catch(e) { console.warn(name + ' render error:', e); } };
+    safeRender(renderSummary, 'Summary');
+    safeRender(renderCharts, 'Charts');
+    safeRender(renderBhava, 'Bhava');
+    safeRender(renderBPHS, 'BPHS');
+    safeRender(renderKP, 'KP');
+    safeRender(renderKoota, 'Koota');
+    safeRender(renderTiming, 'Timing');
+    safeRender(renderForecast, 'Forecast');
+    safeRender(renderTransit, 'Transit');
+    safeRender(renderHealth, 'Health');
+    safeRender(renderSarvashtaka, 'Sarvashtaka');
+    safeRender(renderReport, 'Report');
+  }
+
+  function overallScore() {
+    const r = state.results;
+    // weighted overall: koota 30%, bphs 20%, kp 20%, health 15%, timing readiness 15%
+    const kootaPct = Math.round((r.koota.ashtakoota.total / 36) * 100);
+    const v = kootaPct * 0.3 + r.bphs.combined * 0.2 + r.kp.combined * 0.2 + r.health.score * 0.15 +
+      Math.min(98, Math.round(r.window.peak.joint * 12 + 40)) * 0.15;
+    return Math.round(v);
+  }
+  function overallVerdict(s) {
+    if (s >= 72) return { label: 'Highly Recommended Match', cls: 'good' };
+    if (s >= 58) return { label: 'Recommended Match', cls: 'good' };
+    if (s >= 45) return { label: 'Workable with Awareness', cls: 'mid' };
+    return { label: 'Caution Advised', cls: 'bad' };
+  }
+
+  /* ---------------- summary ---------------- */
+  function renderSummary() {
+    const r = state.results;
+    const s = overallScore(); const ov = overallVerdict(s);
+    $('summaryCard').style.display = 'block';
+    $('summaryContent').innerHTML = `
+      <div class="grid-3">
+        <div class="card" style="margin:0;text-align:center">
+          <div class="big-score">${s}<small>/100</small></div>
+          <div style="margin-top:8px">${chip(ov.label, ov.cls)}</div>
+          <div class="muted small" style="margin-top:6px">Composite of Koota, BPHS, KP, Health &amp; Timing</div>
+        </div>
+        <div class="card" style="margin:0">
+          ${gauge('Ashtakoota (Guna Milan)', r.koota.ashtakoota.total, 36)}
+          ${gaugePct('Dashakoota (Porutham)', r.koota.dashakoota.percent)}
+          ${gaugePct('BPHS marriage index', r.bphs.combined)}
+        </div>
+        <div class="card" style="margin:0">
+          ${gaugePct('KP promise confidence', r.kp.combined)}
+          ${gaugePct('Health compatibility', r.health.score)}
+          ${gaugePct('Sarvashtakavarga (SAV)', r.sarvashtaka.score)}
+          <div class="kv"><span>Nearest marriage window</span><span>${esc(r.window.nearestRange)}</span></div>
+        </div>
+      </div>
+      ${r.koota.ashtakoota.doshas.length ? `<div class="callout warn"><b>Dosha alerts:</b> ${r.koota.ashtakoota.doshas.join(', ')} — see the Koota tab for remedial context.</div>` : ''}
+      <p class="muted small">Use the tabs above for the full house-by-house study, KP cuspal analysis, dasha/transit forecast and the printable report.</p>
+    `;
+  }
+
+  /* ---------------- charts ---------------- */
+  function planetTable(chart) {
+    let rows = '';
+    Astro.PLANETS.forEach((p) => {
+      const pl = chart.planets[p];
+      rows += `<tr>
+        <td><b>${p}</b>${pl.retro ? ' <span class="muted">(R)</span>' : ''}</td>
+        <td>${pl.signName} ${degStr(pl.degInSign)}</td>
+        <td class="num">${pl.house}</td>
+        <td>${pl.nak} (${pl.pada})</td>
+        <td>${pl.nakLord}</td>
+        <td>${pl.subLord}</td>
+      </tr>`;
+    });
+    const a = chart.ascendant;
+    return `
+      <div class="kv"><span>Ascendant (Lagna)</span><span>${a.signName} ${degStr(a.degInSign)} — ${a.nak} (${a.pada})</span></div>
+      <div class="kv"><span>Moon</span><span>${chart.planets.Moon.signName} — ${chart.planets.Moon.nak} pada ${chart.planets.Moon.pada}</span></div>
+      <div class="kv"><span>Ayanāṁśa (Lahiri)</span><span>${fix(chart.ayanamsa, 3)}°</span></div>
+      <table><thead><tr><th>Planet</th><th>Sidereal Position</th><th class="num">House</th><th>Nakshatra (Pada)</th><th>Star Lord</th><th>Sub Lord</th></tr></thead>
+      <tbody>${rows}</tbody></table>`;
+  }
+  function header(chart) {
+    const m = chart.meta;
+    return `<div class="muted small">${esc(m.name)} — ${m.d}/${m.m}/${m.y}, ${String(m.hour).padStart(2,'0')}:${String(m.min).padStart(2,'0')} (TZ ${m.tzOffsetHours}h), ${esc(m.place)} [${fix(m.lat)}, ${fix(m.lonEast)}]</div>`;
+  }
+  function renderCharts() {
+    const b = state.boy, g = state.girl;
+    $('tab-charts').innerHTML = `
+      <div class="card">
+        <h2>Visual Charts — D1 Rāśi, D9 Navāṁśa, KP Placidus</h2>
+        <p class="small muted">South-Indian style box charts. Lagna sign is highlighted. As = Ascendant. ᴿ = Retrograde.</p>
+      </div>
+      <div class="card">
+        <h3>Groom Charts</h3>${header(b)}
+        ${typeof ChartDraw !== 'undefined' ? ChartDraw.renderTriple(b, b.meta.name) : '<p class="muted">Chart renderer not loaded.</p>'}
+      </div>
+      <div class="card">
+        <h3>Bride Charts</h3>${header(g)}
+        ${typeof ChartDraw !== 'undefined' ? ChartDraw.renderTriple(g, g.meta.name) : '<p class="muted">Chart renderer not loaded.</p>'}
+      </div>
+      <div class="card">
+        <h2>Planetary Positions — Groom</h2>${header(b)}${planetTable(b)}
+      </div>
+      <div class="card">
+        <h2>Planetary Positions — Bride</h2>${header(g)}${planetTable(g)}
+      </div>
+      <div class="card"><h3>How to read this</h3><p class="small muted">Positions are sidereal (Lahiri). D1 uses Whole-Sign houses from the Lagna (BPHS frame). D9 (Navāṁśa) shows the 9th-harmonic divisional chart, critical for marriage assessment. KP chart places planets by Porphyry/Placidus cusp houses with house numbers (H1–H12) marked. "Star Lord" and "Sub Lord" are the Vimśottari nakshatra lord and KP sub-lord. (R) / ᴿ marks retrograde motion.</p></div>`;
+  }
+
+  /* ---------------- bhava ---------------- */
+  function bhavaTable(rows) {
+    let out = '';
+    rows.forEach((r) => {
+      const v = BPHS.verdict(r.score);
+      out += `<tr>
+        <td><b>${r.house}</b></td>
+        <td>${esc(r.significationName)}<div class="muted small">${esc(r.themes)}</div></td>
+        <td>${r.signName}</td>
+        <td>${r.lord} <span class="muted small">(H${r.lordHouse}, ${esc(r.lordDignity)})</span></td>
+        <td>${r.occupants.length ? r.occupants.join(', ') : '—'}</td>
+        <td>${r.aspects.length ? r.aspects.join(', ') : '—'}</td>
+        <td>${chip(v.label, v.cls)} <span class="muted small">${r.score}</span></td>
+      </tr>`;
+    });
+    return `<table><thead><tr><th>Bhāva</th><th>Signification</th><th>Sign</th><th>Lord</th><th>Occupants</th><th>Aspected by</th><th>Strength</th></tr></thead><tbody>${out}</tbody></table>`;
+  }
+
+  function renderBhavaHouseCard(comp, boyName, girlName) {
+    const b = comp.boy, g = comp.girl;
+    return `
+      <div class="card bhava-house-card">
+        <div class="bhava-house-header">
+          <h3>${esc(comp.houseName)}</h3>
+          <div>${chip(comp.verdict.label, comp.verdict.cls)} <span class="muted small">${comp.compatibility}%</span></div>
+        </div>
+        <div class="bhava-domain"><b>${esc(comp.domain)}</b></div>
+        <div class="bhava-what-indicates">
+          <p class="small muted" style="margin:6px 0 4px"><b>What this house indicates:</b></p>
+          <ul class="small muted">${comp.generalIndicates.map((i) => `<li>${esc(i)}</li>`).join('')}</ul>
+          <p class="small" style="margin:4px 0; color:var(--accent-4)"><b>Marriage relevance:</b> ${esc(comp.marriageRelevance)}</p>
+        </div>
+        <div class="bhava-compare-grid">
+          <div class="bhava-col bhava-col-boy">
+            <div class="bhava-col-title boy-title">${esc(boyName)} (Groom)</div>
+            <div class="bhava-sign-info">
+              <span class="bhava-sign-badge">${esc(b.signName)}</span>
+              <span class="muted small">Lord: <b>${b.lord}</b> in H${b.lordHouse} (${esc(b.lordDignity)})</span>
+            </div>
+            <div class="bhava-score-row">${gaugePct('Strength', b.score)}</div>
+            <div class="bhava-chars">
+              <p class="small" style="margin:4px 0"><b>Characteristics &amp; Indications:</b></p>
+              ${b.characteristics.map((c) => `<p class="small bhava-char-item">• ${esc(c)}</p>`).join('')}
+            </div>
+          </div>
+          <div class="bhava-col bhava-col-girl">
+            <div class="bhava-col-title girl-title">${esc(girlName)} (Bride)</div>
+            <div class="bhava-sign-info">
+              <span class="bhava-sign-badge">${esc(g.signName)}</span>
+              <span class="muted small">Lord: <b>${g.lord}</b> in H${g.lordHouse} (${esc(g.lordDignity)})</span>
+            </div>
+            <div class="bhava-score-row">${gaugePct('Strength', g.score)}</div>
+            <div class="bhava-chars">
+              <p class="small" style="margin:4px 0"><b>Characteristics &amp; Indications:</b></p>
+              ${g.characteristics.map((c) => `<p class="small bhava-char-item">• ${esc(c)}</p>`).join('')}
+            </div>
+          </div>
+        </div>
+        <div class="bhava-result">
+          <h3>Compatibility Result</h3>
+          ${gaugePct('House ' + comp.houseNum + ' compatibility', comp.compatibility)}
+          <div class="bhava-factors">
+            ${comp.factors.map((f) => `<p class="small">• ${esc(f)}</p>`).join('')}
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function renderBhava() {
+    const comparison = BhavaIndications.compareAll(state.boy, state.girl);
+    const boyName = state.boy.meta.name;
+    const girlName = state.girl.meta.name;
+
+    let houseCards = '';
+    comparison.houses.forEach((comp) => {
+      houseCards += renderBhavaHouseCard(comp, boyName, girlName);
+    });
+
+    $('tab-bhava').innerHTML = `
+      <div class="card">
+        <h2>House-by-House Matching — Side by Side</h2>
+        <p class="small muted">Each of the 12 Bhāvas (houses) studied for both partners: what the house indicates,
+          the characteristics/physical features/mentality it reveals for each person, shown side by side with
+          the compatibility result.</p>
+        <div style="margin:10px 0">
+          ${gaugePct('Overall house-by-house compatibility', comparison.averageCompat)}
+        </div>
+        <div class="grid-2" style="margin-top:8px">
+          <div class="kv"><span>Groom Lagna</span><span>${state.boy.ascendant.signName} (${degStr(state.boy.ascendant.degInSign)})</span></div>
+          <div class="kv"><span>Bride Lagna</span><span>${state.girl.ascendant.signName} (${degStr(state.girl.ascendant.degInSign)})</span></div>
+        </div>
+      </div>
+      ${houseCards}
+      <div class="callout small">Each house comparison evaluates: elemental harmony of the signs, friendship between
+        the lords, strength balance, benefic/malefic occupants, and Jupiter/Venus aspect blessings.
+        Houses 7, 2, 11, 5 and 8 are most critical for marriage.</div>`;
+  }
+  /* ---------------- BPHS ---------------- */
+  function marriageHouseMini(mi) {
+    const cells = [['7th (Spouse)', mi.seventh], ['2nd (Family)', mi.second], ['11th (Fulfilment)', mi.eleventh], ['5th (Romance)', mi.fifth], ['8th (Intimacy)', mi.eighth]];
+    return cells.map(([lbl, h]) => `<div class="kv"><span>${lbl}</span><span>${h.score}/100 — lord ${h.lord} in H${h.lordHouse}</span></div>`).join('');
+  }
+
+  function bphsHouseDetail(chart, houseNum, gender) {
+    const s = BPHS.bhavaStrength(houseNum, chart);
+    const v = BPHS.verdict(s.score);
+    const karaka = gender === 'female' ? 'Jupiter' : 'Venus';
+
+    // Build specific interpretation based on actual chart placements
+    const interp = [];
+
+    // Lord interpretation
+    const lordDig = BPHS.dignity(s.lord, chart);
+    if (lordDig.score >= 4) interp.push(`${s.lord} (lord) is ${lordDig.label} — strongly empowers this house's significations.`);
+    else if (lordDig.score >= 2) interp.push(`${s.lord} (lord) in ${lordDig.label} — good support for this house.`);
+    else if (lordDig.score <= -1) interp.push(`${s.lord} (lord) is ${lordDig.label} — weakens this house; remedial measures beneficial.`);
+    else interp.push(`${s.lord} (lord) is in a ${lordDig.label} — neutral influence.`);
+
+    // Lord placement
+    if ([1, 4, 7, 10].includes(s.lordHouse)) interp.push(`Lord placed in kendra (H${s.lordHouse}) — gives strength and stability to this bhāva.`);
+    else if ([5, 9].includes(s.lordHouse)) interp.push(`Lord placed in trikona (H${s.lordHouse}) — auspicious; dharmic support.`);
+    else if ([6, 8, 12].includes(s.lordHouse)) interp.push(`Lord placed in dusthana (H${s.lordHouse}) — struggles and challenges in this area.`);
+    else if (s.lordHouse === houseNum) interp.push(`Lord in own house — highly fortified; person strongly experiences this house's themes.`);
+
+    // Occupants — specific readings
+    if (s.occupants.length > 0) {
+      s.occupants.forEach((p) => {
+        const pDig = BPHS.dignity(p, chart);
+        const retro = chart.planets[p].retro ? ' (retrograde — karmic, intensified)' : '';
+        if (BPHS.NAT_BENEFIC.includes(p)) {
+          interp.push(`${p}${retro} occupies this house (${pDig.label}) — benefic presence enhances positive outcomes.`);
         } else {
-            html += '<p class="text-warning">No overlapping favorable windows found in the next 10 years. Individual favorable periods are listed below.</p>';
+          interp.push(`${p}${retro} occupies this house (${pDig.label}) — malefic presence creates pressure; transforms through challenges.`);
         }
-
-        // === Individual Favorable Periods ===
-        html += '<h3 class="mt-3">Favorable Marriage Windows - Boy (' + appState.boyName + ')</h3>';
-        html += renderWindowsTable(boyWindows, appState.boyChart);
-
-        html += '<h3 class="mt-3">Favorable Marriage Windows - Girl (' + appState.girlName + ')</h3>';
-        html += renderWindowsTable(girlWindows, appState.girlChart);
-
-        container.innerHTML = html;
-    }
-
-    function renderMarriageSignificatorSummary(chart) {
-        var sigPlanets = DashaTimeline.getMarriageSignificatorPlanets(chart);
-        var html = '<table class="data-table">';
-        html += '<thead><tr><th>Planet</th><th>Signifies Houses</th><th>Strength</th></tr></thead>';
-        html += '<tbody>';
-        var planetNames = Object.keys(sigPlanets);
-        if (planetNames.length === 0) {
-            html += '<tr><td colspan="3">No strong marriage significators found</td></tr>';
-        } else {
-            planetNames.forEach(function(name) {
-                var p = sigPlanets[name];
-                html += '<tr>';
-                html += '<td><strong>' + name + '</strong></td>';
-                html += '<td>' + p.houses.join(', ') + '</td>';
-                html += '<td>' + p.strength + '/3</td>';
-                html += '</tr>';
-            });
-        }
-        html += '</tbody></table>';
-        return html;
-    }
-
-    function renderWindowsTable(windows, chart) {
-        if (windows.length === 0) {
-            return '<p class="text-warning">No strongly favorable marriage windows found in the next 10 years based on Dasha analysis alone.</p>';
-        }
-        var html = '<table class="data-table">';
-        html += '<thead><tr><th>#</th><th>Period</th><th>MD-AD-PD</th><th>Dasha Score</th><th>Strength</th><th>Reasons</th></tr></thead>';
-        html += '<tbody>';
-        var maxWindows = Math.min(windows.length, 15);
-        for (var w = 0; w < maxWindows; w++) {
-            var win = windows[w];
-            // Add transit score for this window
-            var transitScore = Transit.getTransitSummaryForPeriod(chart, win.startJD, win.endJD);
-            var combined = Transit.getCombinedScore(win.score, transitScore.score);
-            html += '<tr>';
-            html += '<td>' + (w + 1) + '</td>';
-            html += '<td>' + DashaTimeline.formatDate(win.startDate) + ' - ' + DashaTimeline.formatDate(win.endDate) + '</td>';
-            html += '<td>' + win.dasha + '-' + win.antardasha + '-' + win.pratyantardasha + '</td>';
-            html += '<td>' + win.score.toFixed(1) + '/10</td>';
-            html += '<td><span class="period-strength ' + win.strength.cssClass + '">' + win.strength.label + '</span></td>';
-            html += '<td>' + (win.reasons.length > 0 ? win.reasons.slice(0, 2).join('; ') : '-') + '</td>';
-            html += '</tr>';
-        }
-        html += '</tbody></table>';
-        return html;
-    }
-
-    function renderForecast() {
-        var container = document.getElementById('forecast-content');
-        if (!container) return;
-
-        var nowJD = DashaTimeline.getNowJD();
-        var html = '';
-
-        // Generate forecast for both charts
-        var boyForecast = DashaTimeline.generate20YearForecast(appState.boyChart, nowJD);
-        var girlForecast = DashaTimeline.generate20YearForecast(appState.girlChart, nowJD);
-
-        html += '<h3>20-Year Relationship Forecast - Boy (' + appState.boyName + ')</h3>';
-        html += '<p class="mb-2">Dasha-Antardasha periods with relationship strength assessment based on signification of houses 2, 7, 11 and transit conditions.</p>';
-        html += renderForecastTimeline(boyForecast, appState.boyChart);
-
-        html += '<h3 class="mt-3">20-Year Relationship Forecast - Girl (' + appState.girlName + ')</h3>';
-        html += '<p class="mb-2">Dasha-Antardasha periods with relationship strength assessment based on signification of houses 2, 7, 11 and transit conditions.</p>';
-        html += renderForecastTimeline(girlForecast, appState.girlChart);
-
-        // Combined outlook summary
-        html += '<h3 class="mt-3">Combined Relationship Outlook</h3>';
-        html += renderCombinedOutlook(boyForecast, girlForecast, appState.boyChart, appState.girlChart);
-
-        container.innerHTML = html;
-    }
-
-    function renderForecastTimeline(forecast, chart) {
-        if (forecast.length === 0) return '<p>No forecast data available.</p>';
-
-        var html = '<table class="data-table">';
-        html += '<thead><tr><th>Period</th><th>MD-AD</th><th>Dasha Score</th><th>Transit Score</th><th>Combined</th><th>Strength</th><th>Interpretation</th></tr></thead>';
-        html += '<tbody>';
-
-        var marriageSig = DashaTimeline.getMarriageSignificatorPlanets(chart);
-
-        for (var i = 0; i < forecast.length; i++) {
-            var period = forecast[i];
-            // Calculate transit score for this period
-            var transitResult = Transit.getTransitSummaryForPeriod(chart, period.startJD, period.endJD);
-            var combinedScore = Transit.getCombinedScore(period.score, transitResult.score);
-            var combinedStrength = DashaTimeline.getStrengthRating(combinedScore);
-
-            var interpretation = DashaTimeline.getInterpretation(
-                period.dashaLord, period.antarLord, null, combinedScore, marriageSig
-            );
-
-            // Color coding class
-            var rowClass = '';
-            if (combinedScore >= 5) rowClass = 'style="background-color:#dcfce7;"'; // green
-            else if (combinedScore >= 2) rowClass = 'style="background-color:#fef9c3;"'; // yellow
-            else if (combinedScore >= -2) rowClass = 'style="background-color:#fed7aa;"'; // orange
-            else rowClass = 'style="background-color:#fecaca;"'; // red
-
-            html += '<tr ' + rowClass + '>';
-            html += '<td>' + DashaTimeline.formatDate(period.startDate) + ' - ' + DashaTimeline.formatDate(period.endDate) + '</td>';
-            html += '<td><strong>' + period.dashaLord + '-' + period.antarLord + '</strong></td>';
-            html += '<td>' + period.score.toFixed(1) + '</td>';
-            html += '<td>' + transitResult.score.toFixed(1) + '</td>';
-            html += '<td><strong>' + combinedScore.toFixed(1) + '</strong></td>';
-            html += '<td><span class="period-strength ' + combinedStrength.cssClass + '">' + combinedStrength.label + '</span></td>';
-            html += '<td style="max-width:250px;font-size:0.8rem;">' + interpretation + '</td>';
-            html += '</tr>';
-
-            // Show Pratyantardasha breakdown for strong periods (expandable detail)
-            if (combinedScore >= 4 && period.pratyantardasha && period.pratyantardasha.length > 0) {
-                html += '<tr><td colspan="7" style="padding:0.5rem 2rem;background:#f0fdf4;">';
-                html += '<strong>Pratyantardasha Detail (Fine Timing):</strong> ';
-                var pdSummary = [];
-                for (var p = 0; p < period.pratyantardasha.length; p++) {
-                    var pd = period.pratyantardasha[p];
-                    if (pd.score >= 3) {
-                        pdSummary.push(pd.lord + ' (' + DashaTimeline.formatDate(pd.startDate) + ' - ' + DashaTimeline.formatDate(pd.endDate) + ', score: ' + pd.score.toFixed(1) + ')');
-                    }
-                }
-                html += pdSummary.length > 0 ? pdSummary.join('; ') : 'No strongly favorable sub-periods in this Antardasha.';
-                html += '</td></tr>';
-            }
-        }
-
-        html += '</tbody></table>';
-        return html;
-    }
-
-    function renderCombinedOutlook(boyForecast, girlForecast, boyChart, girlChart) {
-        // Create a yearly summary combining both forecasts
-        var nowJD = DashaTimeline.getNowJD();
-        var nowDate = AstroCore.jdToDate(nowJD);
-        var startYear = nowDate.year;
-
-        var html = '<table class="data-table">';
-        html += '<thead><tr><th>Year</th><th>Boy Outlook</th><th>Girl Outlook</th><th>Combined</th><th>Transit Highlights</th></tr></thead>';
-        html += '<tbody>';
-
-        for (var y = 0; y < 20; y++) {
-            var yearStart = nowJD + y * 365.25;
-            var yearEnd = yearStart + 365.25;
-            var yearNum = startYear + y;
-
-            // Find the dominant period for boy in this year
-            var boyScore = getAverageScoreForYear(boyForecast, yearStart, yearEnd);
-            var girlScore = getAverageScoreForYear(girlForecast, yearStart, yearEnd);
-            var combinedScore = (boyScore + girlScore) / 2;
-            var combinedStrength = DashaTimeline.getStrengthRating(combinedScore);
-
-            // Transit highlights for the year
-            var midYearJD = yearStart + 182.5;
-            var boyTransit = Transit.getTransitMarriageScore(boyChart, midYearJD);
-            var girlTransit = Transit.getTransitMarriageScore(girlChart, midYearJD);
-            var transitHighlights = [];
-            if (boyTransit.factors.length > 0) transitHighlights.push('Boy: ' + boyTransit.factors[0]);
-            if (girlTransit.factors.length > 0) transitHighlights.push('Girl: ' + girlTransit.factors[0]);
-
-            var rowClass = '';
-            if (combinedScore >= 5) rowClass = 'style="background-color:#dcfce7;"';
-            else if (combinedScore >= 2) rowClass = 'style="background-color:#fef9c3;"';
-            else if (combinedScore >= -2) rowClass = 'style="background-color:#fed7aa;"';
-            else rowClass = 'style="background-color:#fecaca;"';
-
-            html += '<tr ' + rowClass + '>';
-            html += '<td><strong>' + yearNum + '</strong></td>';
-            html += '<td>' + DashaTimeline.getStrengthRating(boyScore).label + ' (' + boyScore.toFixed(1) + ')</td>';
-            html += '<td>' + DashaTimeline.getStrengthRating(girlScore).label + ' (' + girlScore.toFixed(1) + ')</td>';
-            html += '<td><span class="period-strength ' + combinedStrength.cssClass + '">' + combinedStrength.label + '</span></td>';
-            html += '<td style="font-size:0.8rem;">' + (transitHighlights.length > 0 ? transitHighlights.join('; ') : '-') + '</td>';
-            html += '</tr>';
-        }
-
-        html += '</tbody></table>';
-
-        // Legend
-        html += '<div class="mt-2" style="display:flex;gap:1rem;flex-wrap:wrap;">';
-        html += '<span style="padding:0.25rem 0.75rem;background:#dcfce7;border-radius:4px;font-size:0.85rem;">Strong/Favorable</span>';
-        html += '<span style="padding:0.25rem 0.75rem;background:#fef9c3;border-radius:4px;font-size:0.85rem;">Moderate</span>';
-        html += '<span style="padding:0.25rem 0.75rem;background:#fed7aa;border-radius:4px;font-size:0.85rem;">Challenging</span>';
-        html += '<span style="padding:0.25rem 0.75rem;background:#fecaca;border-radius:4px;font-size:0.85rem;">Difficult</span>';
-        html += '</div>';
-
-        return html;
-    }
-
-    function getAverageScoreForYear(forecast, yearStartJD, yearEndJD) {
-        var totalScore = 0;
-        var totalDays = 0;
-
-        for (var i = 0; i < forecast.length; i++) {
-            var period = forecast[i];
-            // Find overlap between period and the year
-            var overlapStart = Math.max(period.startJD, yearStartJD);
-            var overlapEnd = Math.min(period.endJD, yearEndJD);
-
-            if (overlapStart < overlapEnd) {
-                var days = overlapEnd - overlapStart;
-                totalScore += period.score * days;
-                totalDays += days;
-            }
-        }
-
-        return totalDays > 0 ? totalScore / totalDays : 0;
-    }
-
-    function renderHealthPlaceholder() {
-        var container = document.getElementById('health-content');
-        if (!container) return;
-        container.innerHTML = '<div class="result-card"><h4>Health Compatibility</h4>' +
-            '<p>Chart data available. Health compatibility assessment will be rendered here.</p></div>';
-    }
-
-    function renderAshtakootaPlaceholder() {
-        var container = document.getElementById('ashtakoota-content');
-        if (!container) return;
-        var boyMoon = appState.boyChart.planets.Moon;
-        var girlMoon = appState.girlChart.planets.Moon;
-        container.innerHTML = '<div class="result-card"><h4>Ashtakoota Matching</h4>' +
-            '<p>Moon positions calculated. Ashtakoota scores will be rendered here.</p>' +
-            '<p class="mt-1">Boy Moon: ' + boyMoon.nakshatra + ' (Pada ' + boyMoon.pada + ') in ' + boyMoon.rashi + '</p>' +
-            '<p>Girl Moon: ' + girlMoon.nakshatra + ' (Pada ' + girlMoon.pada + ') in ' + girlMoon.rashi + '</p>' +
-            '</div>';
-    }
-
-    function renderDashakootaPlaceholder() {
-        var container = document.getElementById('dashakoota-content');
-        if (!container) return;
-        container.innerHTML = '<div class="result-card"><h4>Dashakoota Matching</h4>' +
-            '<p>Moon positions calculated. Dashakoota scores will be rendered here.</p></div>';
-    }
-
-    // ===== PDF Generation =====
-    function initPDF() {
-        var btn = document.getElementById('generate-pdf');
-        if (btn) {
-            btn.addEventListener('click', function() {
-                generatePDF();
-            });
-        }
-    }
-
-    function generatePDF() {
-        if (!appState.calculated) return;
-
-        var pdfStatus = document.getElementById('pdf-status');
-        if (pdfStatus) pdfStatus.textContent = 'Generating PDF... please wait.';
-
-        // Create a temporary container with all content
-        var content = document.createElement('div');
-        content.innerHTML = '<h1 style="text-align:center;color:#4c1d95;">Marriage Matching Report</h1>';
-        content.innerHTML += '<p style="text-align:center;">Boy: ' + appState.boyName + ' | Girl: ' + appState.girlName + '</p>';
-        content.innerHTML += '<hr>';
-        content.innerHTML += document.getElementById('bhava-content').innerHTML;
-
-        var opt = {
-            margin: 10,
-            filename: 'marriage-matching-report.pdf',
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2 },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        };
-
-        if (typeof html2pdf !== 'undefined') {
-            html2pdf().set(opt).from(content).save().then(function() {
-                if (pdfStatus) pdfStatus.textContent = 'PDF generated successfully!';
-            });
-        } else {
-            if (pdfStatus) pdfStatus.textContent = 'PDF library not loaded. Please check your internet connection.';
-        }
-    }
-
-    // ===== Initialize Application =====
-    function init() {
-        initTabs();
-        initForm();
-        initPDF();
-    }
-
-    // Run on DOM ready
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
+      });
     } else {
-        init();
+      interp.push('No planets occupy this house — results depend entirely on the lord\'s condition and aspects received.');
     }
+
+    // Aspects — specific
+    if (s.aspects.length > 0) {
+      s.aspects.forEach((p) => {
+        if (BPHS.NAT_BENEFIC.includes(p)) {
+          interp.push(`${p} aspects this house — protective, enhancing influence.`);
+        } else {
+          interp.push(`${p} aspects this house — adds intensity and challenge.`);
+        }
+      });
+    }
+
+    // Marriage-karaka connection
+    if (houseNum === 7) {
+      const karakaPl = chart.planets[karaka];
+      const karakaDig = BPHS.dignity(karaka, chart);
+      interp.push(`Marriage kāraka ${karaka} is in ${karakaPl.signName} (H${karakaPl.house}, ${karakaDig.label}) — ${karakaDig.score >= 2 ? 'supports marital happiness' : 'needs attention for relationship fulfilment'}.`);
+    }
+
+    return { ...s, verdict: v, interp };
+  }
+
+  function bphsHouseCard(label, detail, houseNum) {
+    const houseName = BPHS.BHAVA_SIGNIFICATIONS[houseNum] ? BPHS.BHAVA_SIGNIFICATIONS[houseNum].name : 'House ' + houseNum;
+    return `
+      <div class="kv"><span><b>H${houseNum}</b> ${esc(houseName)}</span><span>${chip(detail.verdict.label, detail.verdict.cls)} ${detail.score}/100</span></div>
+      <div class="small" style="margin:4px 0 4px 8px; padding-left:10px; border-left:2px solid var(--border)">
+        <div class="muted">Sign: <b>${detail.signName}</b> | Lord: <b>${detail.lord}</b> (H${detail.lordHouse}, ${esc(detail.lordDignity)}) | Occupants: ${detail.occupants.length ? detail.occupants.join(', ') : '—'} | Aspects: ${detail.aspects.length ? detail.aspects.join(', ') : '—'}</div>
+        ${detail.interp.map((i) => `<p class="small" style="margin:2px 0">• ${esc(i)}</p>`).join('')}
+      </div>`;
+  }
+
+  function renderBPHS() {
+    const r = state.results; const b = r.bphs;
+    const boy = state.boy, girl = state.girl;
+
+    // Generate specific house assessments for all 12 houses
+    const marriageHouses = [7, 2, 11, 5, 8, 4, 12, 1, 9];
+    const boyDetails = marriageHouses.map((h) => bphsHouseDetail(boy, h, 'male'));
+    const girlDetails = marriageHouses.map((h) => bphsHouseDetail(girl, h, 'female'));
+
+    let boyHouseCards = '', girlHouseCards = '';
+    marriageHouses.forEach((h, idx) => {
+      boyHouseCards += bphsHouseCard('Groom', boyDetails[idx], h);
+      girlHouseCards += bphsHouseCard('Bride', girlDetails[idx], h);
+    });
+
+    $('tab-bphs').innerHTML = `
+      <div class="card">
+        <h2>BPHS Marriage Assessment — Specific Results</h2>
+        <p class="small muted">Chart-specific assessment of each marriage-relevant house for both partners, based on their actual planetary placements, lordships, and aspects.</p>
+        <div style="margin:10px 0">${chip(b.verdict.label, b.verdict.cls)} &nbsp; Combined index <b>${b.combined}/100</b></div>
+        <div class="grid-2">
+          <div>${gaugePct(boy.meta.name + ' (Groom) marriage index', b.boy.index)}</div>
+          <div>${gaugePct(girl.meta.name + ' (Bride) marriage index', b.girl.index)}</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>${esc(boy.meta.name)} (Groom) — House-by-House Assessment</h3>
+          ${header(boy)}
+          <div class="kv" style="margin-bottom:8px"><span>Lagna</span><span>${boy.ascendant.signName}</span></div>
+          ${boyHouseCards}
+          <div style="margin-top:12px">
+            <div class="kv"><span>Venus (love kāraka) dignity</span><span><b>${esc(b.boy.venusDignity.label)}</b></span></div>
+            <div class="kv"><span>Jupiter (wisdom) dignity</span><span>${esc(b.boy.jupiterDignity.label)}</span></div>
+            <div class="kv"><span>7th-house malefic afflictions</span><span>${b.boy.seventhAfflictions} planet(s)</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>${esc(girl.meta.name)} (Bride) — House-by-House Assessment</h3>
+          ${header(girl)}
+          <div class="kv" style="margin-bottom:8px"><span>Lagna</span><span>${girl.ascendant.signName}</span></div>
+          ${girlHouseCards}
+          <div style="margin-top:12px">
+            <div class="kv"><span>Jupiter (husband kāraka) dignity</span><span><b>${esc(b.girl.jupiterDignity.label)}</b></span></div>
+            <div class="kv"><span>Venus (love) dignity</span><span>${esc(b.girl.venusDignity.label)}</span></div>
+            <div class="kv"><span>7th-house malefic afflictions</span><span>${b.girl.seventhAfflictions} planet(s)</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Combined Interpretation</h3>
+        ${b.notes.map((n) => `<p class="small">• ${esc(n)}</p>`).join('')}
+      </div>
+
+      <div class="callout small">This assessment reads each house <b>specifically from the chart</b> — the sign on the cusp,
+        the lord's dignity and placement, actual occupant planets and their condition, and aspects received.
+        Houses 7 (marriage), 2 (family life), 11 (wish-fulfilment), 5 (romance/children) and 8 (marital intimacy)
+        are the primary indicators; houses 4 (home happiness), 12 (bed pleasures), 1 (self) and 9 (fortune/dharma)
+        also contribute.</div>`;
+  }
+
+  /* ---------------- KP ---------------- */
+  function kpCuspTable(assess) {
+    let rows = '';
+    assess.cusps.forEach((c) => {
+      rows += `<tr><td><b>${c.house}</b></td><td>${c.sign} ${fix(c.deg)}°</td><td>${c.nakLord}</td><td><b>${c.subLord}</b></td><td>${c.subSubLord}</td><td>${c.subSignifies.join(', ')}</td></tr>`;
+    });
+    return `<table><thead><tr><th>Cusp</th><th>Sign</th><th>Star Lord</th><th>Sub Lord</th><th>Sub-Sub</th><th>Sub signifies houses</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
+  function renderKP() {
+    const r = state.results;
+    const b = r.kpB, g = r.kpG;
+    $('tab-kp').innerHTML = `
+      <div class="card">
+        <h2>KP (Krishnamurti Paddhati) Assessment</h2>
+        <div style="margin:6px 0">${chip(r.kp.verdict.label, r.kp.verdict.cls)} &nbsp; Combined confidence <b>${r.kp.combined}%</b></div>
+        ${r.kp.notes.map((n) => `<p class="small">• ${esc(n)}</p>`).join('')}
+      </div>
+      <div class="grid-2">
+        <div class="card"><h3>Groom — 7th cusp &amp; promise</h3>
+          <div class="kv"><span>7th cusp sub-lord</span><span><b>${b.promise.subLord}</b></span></div>
+          <div class="kv"><span>Signifies houses</span><span>${b.promise.sigHouses.join(', ')}</span></div>
+          <div class="kv"><span>Marriage houses (2/7/11)</span><span>${b.promise.matched.join(', ') || 'none'}</span></div>
+          <div style="margin-top:8px">${chip(b.verdict.label, b.verdict.cls)} — ${b.promise.confidence}%</div>
+          <h3>Marriage significators</h3>
+          <p class="small">${b.significators.slice(0,6).map((s)=>`${s.planet} (${s.strength})`).join(', ')}</p>
+        </div>
+        <div class="card"><h3>Bride — 7th cusp &amp; promise</h3>
+          <div class="kv"><span>7th cusp sub-lord</span><span><b>${g.promise.subLord}</b></span></div>
+          <div class="kv"><span>Signifies houses</span><span>${g.promise.sigHouses.join(', ')}</span></div>
+          <div class="kv"><span>Marriage houses (2/7/11)</span><span>${g.promise.matched.join(', ') || 'none'}</span></div>
+          <div style="margin-top:8px">${chip(g.verdict.label, g.verdict.cls)} — ${g.promise.confidence}%</div>
+          <h3>Marriage significators</h3>
+          <p class="small">${g.significators.slice(0,6).map((s)=>`${s.planet} (${s.strength})`).join(', ')}</p>
+        </div>
+      </div>
+      <div class="card"><h3>Groom — Cuspal sub-lords (2,7,11,5,8)</h3>${kpCuspTable(b)}</div>
+      <div class="card"><h3>Bride — Cuspal sub-lords (2,7,11,5,8)</h3>${kpCuspTable(g)}</div>`;
+  }
+
+  /* ---------------- Koota ---------------- */
+  function renderKoota() {
+    const r = state.results; const k = r.koota;
+    let aRows = '';
+    k.ashtakoota.items.forEach((i) => {
+      aRows += `<tr><td><b>${esc(i.key)}</b></td><td class="num">${i.score}</td><td class="num">${i.max}</td><td>${esc(i.note)}</td></tr>`;
+    });
+    let dRows = '';
+    k.dashakoota.items.forEach((i) => {
+      dRows += `<tr><td><b>${esc(i.key)}</b></td><td>${i.pass ? '<span class="pass">PASS</span>' : '<span class="fail">FAIL</span>'}</td><td>${esc(i.detail)}</td></tr>`;
+    });
+    $('tab-koota').innerHTML = `
+      <div class="card">
+        <h2>Koota Matching</h2>
+        <div class="kv"><span>Groom Moon</span><span>${k.boyMoon.sign} — ${k.boyMoon.nak} (pada ${k.boyMoon.pada})</span></div>
+        <div class="kv"><span>Bride Moon</span><span>${k.girlMoon.sign} — ${k.girlMoon.nak} (pada ${k.girlMoon.pada})</span></div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Ashtakoota (Guna Milan) — ${k.ashtakoota.total}/36 ${chip(k.ashtakoota.verdict.label, k.ashtakoota.verdict.cls)}</h3>
+          ${gauge('Total Gunas', k.ashtakoota.total, 36)}
+          <table><thead><tr><th>Koota</th><th class="num">Score</th><th class="num">Max</th><th>Detail</th></tr></thead><tbody>${aRows}</tbody></table>
+          ${k.ashtakoota.doshas.length ? `<div class="callout warn small"><b>Doshas:</b> ${k.ashtakoota.doshas.join(', ')}</div>` : '<div class="callout small">No major Ashtakoota dosha detected.</div>'}
+        </div>
+        <div class="card">
+          <h3>Dashakoota (Dasa Porutham) — ${k.dashakoota.passCount}/10 ${chip(k.dashakoota.verdict.label, k.dashakoota.verdict.cls)}</h3>
+          ${gauge('Poruthams passed', k.dashakoota.passCount, 10)}
+          <table><thead><tr><th>Porutham</th><th>Result</th><th>Detail</th></tr></thead><tbody>${dRows}</tbody></table>
+        </div>
+      </div>
+      <div class="callout small">Conventional guidance: Ashtakoota ≥ 18/36 is considered acceptable, ≥ 24 good.
+        Nāḍī and Bhakūṭa doshas may be mitigated by other strong factors (same Rāśi-lord, planetary
+        cancellation), which a qualified astrologer should confirm.</div>`;
+  }
+
+  /* ---------------- Timing ---------------- */
+  function renderTiming() {
+    const r = state.results; const w = r.window;
+    function topList(person, label) {
+      let rows = '';
+      person.topByScore.forEach((t) => {
+        rows += `<tr><td>${Dasha.fmtYM(t.startJd)} – ${Dasha.fmtYM(t.endJd)}</td><td>${t.md}/${t.ad}/${t.pd}</td><td class="num">${fix(t.score,1)}</td></tr>`;
+      });
+      return `<div class="card"><h3>${label} — strongest marriage periods</h3>
+        <table><thead><tr><th>Window</th><th>MD/AD/PD</th><th class="num">Score</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    }
+    $('tab-timing').innerHTML = `
+      <div class="card">
+        <h2>Nearest Marriage Timing</h2>
+        <div class="big-score" style="font-size:26px">${esc(w.nearestRange)}</div>
+        <p class="small muted">Earliest window where both partners' Dasha readiness and supportive transits coincide.</p>
+        <div class="kv"><span>Groom running Dasha then</span><span>${w.boyDasha ? `${w.boyDasha.md.lord}/${w.boyDasha.ad?w.boyDasha.ad.lord:'-'}/${w.boyDasha.pd?w.boyDasha.pd.lord:'-'}` : '-'}</span></div>
+        <div class="kv"><span>Bride running Dasha then</span><span>${w.girlDasha ? `${w.girlDasha.md.lord}/${w.girlDasha.ad?w.girlDasha.ad.lord:'-'}/${w.girlDasha.pd?w.girlDasha.pd.lord:'-'}` : '-'}</span></div>
+      </div>
+      <div class="grid-2">
+        ${topList(w.boy, 'Groom')}
+        ${topList(w.girl, 'Bride')}
+      </div>
+      <div class="callout small">Timing blends Vimśottari MD/AD/PD favourability (7th/2nd/11th/5th lords, the
+        Venus/Jupiter kāraka and KP 2-7-11 significators) with Jupiter/Saturn transit triggers. Treat the
+        window as a season of opportunity, not an exact date.</div>`;
+  }
+
+  /* ---------------- Forecast ---------------- */
+  function renderForecast() {
+    const r = state.results;
+    let rows = '';
+    r.forecast.forEach((f) => {
+      rows += `<tr class="band-${f.band.cls}">
+        <td>${f.start} – ${f.end}</td>
+        <td class="small">${f.boyDasha}</td>
+        <td class="small">${f.girlDasha}</td>
+        <td class="num">${f.boyStrength}</td>
+        <td class="num">${f.girlStrength}</td>
+        <td class="num"><b>${f.combined}</b></td>
+        <td>${chip(f.band.label, f.band.cls)}</td>
+        <td class="small muted">${esc(f.transitNote)}</td>
+      </tr>`;
+    });
+    $('tab-forecast').innerHTML = `
+      <div class="card">
+        <h2>20-Year Relationship Strength &amp; Weakness Forecast</h2>
+        <p class="small muted">Period-by-period (Mahādaśā / Antardaśā / Pratyantardaśā) outlook for the union,
+          combining both partners' dasha favourability with concurrent planetary transits. Strength on 0–100.</p>
+        <table><thead><tr><th>Period</th><th>Groom MD/AD/PD</th><th>Bride MD/AD/PD</th><th class="num">Groom</th><th class="num">Bride</th><th class="num">Combined</th><th>Band</th><th>Key transit</th></tr></thead>
+        <tbody>${rows}</tbody></table>
+        <div class="legend-line"><span class="dot good"></span>Strong/Supportive &nbsp; <span class="dot mid"></span>Mixed &nbsp; <span class="dot bad"></span>Testing/Strained</div>
+      </div>
+      <div class="callout small">Phases marked <i>Testing</i> indicate periods needing extra communication, patience
+        and shared effort (often Saturn/Rahu activations or 6/8/12-lord sub-periods); <i>Strong</i> phases favour
+        harmony, milestones (children, property) and renewal of the bond.</div>`;
+  }
+
+  /* ---------------- Transit ---------------- */
+  function transitTable(rows) {
+    let out = '';
+    rows.forEach((t) => {
+      const cls = t.eval.score >= 3 ? 'good' : t.eval.score <= -1 ? 'bad' : 'mid';
+      out += `<tr><td>${t.date}</td><td>${t.jupiter}</td><td>${t.saturn}</td><td>${t.rahu}</td><td>${chip(t.eval.score, cls)}</td><td class="small muted">${esc(t.eval.triggers.slice(0,2).join('; ') || '—')}</td></tr>`;
+    });
+    return `<table><thead><tr><th>Date</th><th>Jupiter (H from Moon)</th><th>Saturn (H from Moon)</th><th>Rahu</th><th>Score</th><th>Triggers</th></tr></thead><tbody>${out}</tbody></table>`;
+  }
+  function renderTransit() {
+    const r = state.results;
+    $('tab-transit').innerHTML = `
+      <div class="card"><h2>Gochara (Transit) Outlook — Groom</h2>${header(state.boy)}${transitTable(r.transitB)}</div>
+      <div class="card"><h2>Gochara (Transit) Outlook — Bride</h2>${header(state.girl)}${transitTable(r.transitG)}</div>
+      <div class="callout small">"H from Moon" = the house counted from the natal Moon sign that the planet
+        is transiting. Jupiter over the 7th/2nd/11th from Moon and over the natal 7th sign are classic
+        marriage activators; Saturn's Sade-Sati (12-1-2 from Moon) marks emotionally demanding seasons.</div>`;
+  }
+
+  /* ---------------- Health ---------------- */
+  function healthCard(name, h) {
+    return `<div class="card"><h3>${esc(name)}</h3>
+      ${gaugePct('Vitality (Lagna)', h.vitality)}
+      ${gaugePct('Immunity (6th)', h.immunity)}
+      ${gaugePct('Chronic resilience (8th)', h.chronic)}
+      ${gaugePct('Mind / emotional (Moon)', h.mind)}
+      <div class="kv"><span>Overall</span><span><b>${h.overall}/100</b></span></div>
+      <div class="kv"><span>Dosha leaning (Moon)</span><span>${h.moonDosha}</span></div>
+      <div class="kv"><span>Constitution (Lagna)</span><span>${h.lagnaDosha}</span></div>
+      ${h.flags.length ? `<h3>Screening notes</h3>${h.flags.map((f)=>`<p class="small">• ${esc(f)}</p>`).join('')}` : '<p class="small muted">No major affliction flags.</p>'}
+    </div>`;
+  }
+  function renderHealth() {
+    const r = state.results; const h = r.health;
+    $('tab-health').innerHTML = `
+      <div class="card">
+        <h2>Health Compatibility Screener</h2>
+        <div style="margin:6px 0">${chip(h.verdict.label, h.verdict.cls)} &nbsp; Index <b>${h.score}/100</b></div>
+        ${gaugePct('Combined health compatibility', h.score)}
+        <h3>Comparative notes</h3>${h.notes.map((n)=>`<p class="small">• ${esc(n)}</p>`).join('')}
+      </div>
+      <div class="grid-2">${healthCard(state.boy.meta.name + ' (Groom)', h.boy)}${healthCard(state.girl.meta.name + ' (Bride)', h.girl)}</div>
+      <div class="callout small">This screener interprets the Lagna lord, 6th, 8th, 12th houses and the Moon for
+        each partner, plus the Āyurvedic dosha leaning, then compares the two profiles. It is an astrological
+        wellness indicator only — not a medical diagnosis.</div>`;
+  }
+
+  /* ---------------- Manual ---------------- */
+  $('tab-manual').innerHTML = `<div class="card">${Manual.html()}</div>`;
+
+  /* ---------------- Sarvashtakavarga ---------------- */
+  function renderSarvashtaka() {
+    const r = state.results;
+    const sa = r.sarvashtaka;
+
+    // Full SAV table (all 12 houses, boy vs girl)
+    let compRows = '';
+    sa.comparison.forEach((c) => {
+      const cls = c.harmony.cls;
+      compRows += `<tr class="band-${cls}">
+        <td><b>${c.house}</b></td>
+        <td class="num">${c.boyBindus}</td>
+        <td class="num">${c.girlBindus}</td>
+        <td class="num">${c.avg}</td>
+        <td>${chip(c.harmony.label, c.harmony.cls)}</td>
+      </tr>`;
+    });
+
+    // Marriage houses detail
+    let marriageRows = '';
+    sa.marriageComparison.forEach((m) => {
+      marriageRows += `<tr>
+        <td><b>H${m.house}</b> <span class="muted small">(${esc(Sarvashtaka.coupleAnalysis === undefined ? '' : houseLabel2(m.house))})</span></td>
+        <td>${esc(m.signBoy)}</td>
+        <td class="num">${m.boyBindus} ${chip(m.boyQuality.label, m.boyQuality.cls)}</td>
+        <td>${esc(m.signGirl)}</td>
+        <td class="num">${m.girlBindus} ${chip(m.girlQuality.label, m.girlQuality.cls)}</td>
+        <td class="num"><b>${m.avg}</b></td>
+      </tr>`;
+    });
+
+    // BAV grid for boy (7 planets x 12 houses)
+    function bavGrid(data, name) {
+      let header = '<th>' + name + '</th>';
+      for (let h = 1; h <= 12; h++) header += `<th class="num">H${h}</th>`;
+      header += '<th class="num">Total</th>';
+      let rows = '';
+      Sarvashtaka.PLANETS_7.forEach((p) => {
+        const bavRow = data.houseBavs[p];
+        const total = bavRow.reduce((s, v) => s + v, 0);
+        rows += '<tr><td><b>' + p + '</b></td>';
+        bavRow.forEach((v) => {
+          const cls = v >= 5 ? 'pass' : v <= 2 ? 'fail' : '';
+          rows += `<td class="num ${cls}">${v}</td>`;
+        });
+        rows += `<td class="num"><b>${total}</b></td></tr>`;
+      });
+      // SAV totals row
+      rows += '<tr style="border-top:2px solid var(--border)"><td><b>SAV</b></td>';
+      data.houses.forEach((h) => {
+        const cls = h.bindus >= 28 ? 'pass' : h.bindus < 25 ? 'fail' : '';
+        rows += `<td class="num ${cls}"><b>${h.bindus}</b></td>`;
+      });
+      rows += `<td class="num"><b>${data.total}</b></td></tr>`;
+      return `<table class="bav-table"><thead><tr>${header}</tr></thead><tbody>${rows}</tbody></table>`;
+    }
+
+    $('tab-sarvashtaka').innerHTML = `
+      <div class="card">
+        <h2>Sarvashtakavarga (SAV) Analysis</h2>
+        <div style="margin:6px 0">${chip(sa.verdict.label, sa.verdict.cls)} &nbsp; Compatibility Score <b>${sa.score}/100</b></div>
+        ${gaugePct('SAV Marriage Compatibility', sa.score)}
+        <div class="grid-2" style="margin-top:12px">
+          <div class="kv"><span>Groom total SAV bindus</span><span><b>${sa.boy.houseSAV.total}</b></span></div>
+          <div class="kv"><span>Bride total SAV bindus</span><span><b>${sa.girl.houseSAV.total}</b></span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Marriage Houses — SAV Comparison</h3>
+        <p class="small muted">Houses 7 (spouse), 2 (family), 11 (gains), 5 (romance) and 8 (intimacy) evaluated.
+          Bindus ≥ 28 = Strong, 25–27 = Moderate, &lt; 25 = Weak.</p>
+        <table>
+          <thead><tr><th>House</th><th>Boy Sign</th><th class="num">Boy Bindus</th><th>Girl Sign</th><th class="num">Girl Bindus</th><th class="num">Avg</th></tr></thead>
+          <tbody>${marriageRows}</tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h3>Full House-by-House SAV Comparison</h3>
+        <table>
+          <thead><tr><th>House</th><th class="num">Boy Bindus</th><th class="num">Girl Bindus</th><th class="num">Average</th><th>Harmony</th></tr></thead>
+          <tbody>${compRows}</tbody>
+        </table>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>Groom — Bhinnashtakavarga (BAV) Grid</h3>
+          <p class="small muted">Bindus per planet per house. Green ≥ 5 (strong), Red ≤ 2 (weak).</p>
+          ${bavGrid(sa.boy.houseSAV, 'Planet')}
+        </div>
+        <div class="card">
+          <h3>Bride — Bhinnashtakavarga (BAV) Grid</h3>
+          <p class="small muted">Bindus per planet per house. Green ≥ 5 (strong), Red ≤ 2 (weak).</p>
+          ${bavGrid(sa.girl.houseSAV, 'Planet')}
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Interpretation &amp; Notes</h3>
+        ${sa.notes.map((n) => `<p class="small">• ${esc(n)}</p>`).join('')}
+      </div>
+
+      <div class="callout small">
+        <b>About Sarvashtakavarga:</b> The Ashtakavarga system (BPHS Ch. 66–72) assigns benefic points (bindus)
+        from each of the 7 planets and the Lagna to every sign. The SAV is the aggregate — signs with more bindus
+        indicate stronger results for that life area. For marriage, high bindus in the 7th house (marriage), 2nd
+        (family), 11th (fulfilment), 5th (romance/children), and Venus's BAV in the 7th are especially significant.
+      </div>`;
+  }
+
+  function houseLabel2(h) {
+    const labels = { 2: 'Family/Wealth', 5: 'Romance/Children', 7: 'Marriage/Spouse', 8: 'Intimacy/Longevity', 11: 'Fulfilment/Gains' };
+    return labels[h] || '';
+  }
+
+  /* ---------------- Report (PDF) ---------------- */
+  function renderReport() {
+    const r = state.results;
+    const s = overallScore(); const ov = overallVerdict(s);
+    const b = state.boy, g = state.girl;
+    const node = $('report-content');
+    node.innerHTML = `
+      <div class="card">
+        <h2 style="text-align:center">Marriage Compatibility Report</h2>
+        <p class="small muted" style="text-align:center">${esc(b.meta.name)} &amp; ${esc(g.meta.name)} — generated ${new Date().toLocaleDateString()}</p>
+        <div style="text-align:center;margin:10px 0">
+          <span class="big-score">${s}<small>/100</small></span><br/>${chip(ov.label, ov.cls)}
+        </div>
+        <table>
+          <tr><th>Module</th><th>Result</th></tr>
+          <tr><td>Ashtakoota (Guna Milan)</td><td>${r.koota.ashtakoota.total}/36 — ${r.koota.ashtakoota.verdict.label}</td></tr>
+          <tr><td>Dashakoota (Porutham)</td><td>${r.koota.dashakoota.passCount}/10 — ${r.koota.dashakoota.verdict.label}</td></tr>
+          <tr><td>BPHS marriage index</td><td>${r.bphs.combined}/100 — ${r.bphs.verdict.label}</td></tr>
+          <tr><td>KP promise confidence</td><td>${r.kp.combined}% — ${r.kp.verdict.label}</td></tr>
+          <tr><td>Health compatibility</td><td>${r.health.score}/100 — ${r.health.verdict.label}</td></tr>
+          <tr><td>Sarvashtakavarga (SAV)</td><td>${r.sarvashtaka.score}/100 — ${r.sarvashtaka.verdict.label}</td></tr>
+          <tr><td>Nearest marriage window</td><td>${esc(r.window.nearestRange)}</td></tr>
+          ${r.koota.ashtakoota.doshas.length ? `<tr><td>Dosha alerts</td><td>${r.koota.ashtakoota.doshas.join(', ')}</td></tr>` : ''}
+        </table>
+      </div>
+      <div class="card"><h3>Birth Data</h3>${header(b)}${header(g)}</div>
+      <div class="card"><h3>Groom — Planetary Positions</h3>${planetTable(b)}</div>
+      <div class="card"><h3>Bride — Planetary Positions</h3>${planetTable(g)}</div>
+      <div class="card"><h3>Ashtakoota Detail</h3>${tableFromAshta(r.koota.ashtakoota)}</div>
+      <div class="card"><h3>Dashakoota Detail</h3>${tableFromDasha(r.koota.dashakoota)}</div>
+      <div class="card"><h3>BPHS Interpretation</h3>${r.bphs.notes.map((n)=>`<p class="small">• ${esc(n)}</p>`).join('')}</div>
+      <div class="card"><h3>KP Interpretation</h3>${r.kp.notes.map((n)=>`<p class="small">• ${esc(n)}</p>`).join('')}</div>
+      <div class="card"><h3>Marriage Timing &amp; Forecast (next periods)</h3>${forecastMini(r.forecast)}</div>
+      <div class="card"><h3>Health Compatibility</h3>${r.health.notes.map((n)=>`<p class="small">• ${esc(n)}</p>`).join('')}</div>
+      <p class="footer-note">For educational &amp; decision-support purposes only.</p>
+    `;
+  }
+  function tableFromAshta(a) {
+    return `<table><thead><tr><th>Koota</th><th class="num">Score</th><th class="num">Max</th><th>Detail</th></tr></thead><tbody>${a.items.map((i)=>`<tr><td>${esc(i.key)}</td><td class="num">${i.score}</td><td class="num">${i.max}</td><td>${esc(i.note)}</td></tr>`).join('')}<tr><td><b>Total</b></td><td class="num"><b>${a.total}</b></td><td class="num"><b>36</b></td><td></td></tr></tbody></table>`;
+  }
+  function tableFromDasha(d) {
+    return `<table><thead><tr><th>Porutham</th><th>Result</th><th>Detail</th></tr></thead><tbody>${d.items.map((i)=>`<tr><td>${esc(i.key)}</td><td>${i.pass?'PASS':'FAIL'}</td><td>${esc(i.detail)}</td></tr>`).join('')}</tbody></table>`;
+  }
+  function forecastMini(f) {
+    return `<table><thead><tr><th>Period</th><th class="num">Combined</th><th>Band</th></tr></thead><tbody>${f.slice(0,10).map((x)=>`<tr><td>${x.start} – ${x.end}</td><td class="num">${x.combined}</td><td>${x.band.label}</td></tr>`).join('')}</tbody></table>`;
+  }
+
+  $('printReport').addEventListener('click', () => {
+    if (!state.results) { alert('Please generate a report first (Tab 1).'); return; }
+    window.print();
+  });
+  $('downloadPdf').addEventListener('click', () => {
+    if (!state.results) { alert('Please generate a report first (Tab 1).'); return; }
+    const el = $('report-content');
+    if (window.html2pdf) {
+      const name = `Marriage-Report-${state.boy.meta.name}-${state.girl.meta.name}.pdf`.replace(/\s+/g, '_');
+      window.html2pdf().set({
+        margin: 10, filename: name,
+        image: { type: 'jpeg', quality: 0.95 },
+        html2canvas: { scale: 2, backgroundColor: '#ffffff' },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['css', 'legacy'] },
+      }).from(el).save();
+    } else {
+      window.print();
+    }
+  });
+
+  /* ---------------- GeoCity autocomplete initialization ---------------- */
+  if (typeof GeoCity !== 'undefined') {
+    GeoCity.attach('b_place', 'b_lat', 'b_lon', 'b_tz');
+    GeoCity.attach('g_place', 'g_lat', 'g_lon', 'g_tz');
+  }
 })();

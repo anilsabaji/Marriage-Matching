@@ -1,443 +1,163 @@
-/**
- * Dasha.js - Marriage Timeline Prediction using Vimshottari Dasha
- * Builds on AstroCore's Dasha calculations to predict marriage windows
- * by identifying periods where 7th house significators are active
- */
-var DashaTimeline = (function() {
-    'use strict';
+/* =============================================================================
+ * dasha.js  —  Vimshottari Dasha engine
+ *
+ * Computes Mahadasha (MD), Antardasha (AD) and Pratyantardasha (PD) periods
+ * with real calendar dates, derived from the Moon's longitude at birth.
+ * Total cycle = 120 years. Used for timing of marriage and for the 20-year
+ * relationship strength forecast.
+ * ========================================================================== */
 
-    var DASHA_SEQUENCE = AstroCore.DASHA_SEQUENCE;
-    var DASHA_YEARS = AstroCore.DASHA_YEARS;
+const Dasha = (function () {
+  'use strict';
 
-    // Marriage-relevant houses: 2 (family), 7 (spouse), 11 (fulfillment of desires)
-    var MARRIAGE_HOUSES = [2, 7, 11];
-    // Negative/delaying houses for marriage
-    var NEGATIVE_HOUSES = [6, 8, 12];
+  const YEAR_DAYS = 365.2425;
 
-    /**
-     * Get the full Dasha sequence for a chart (all 9 Mahadashas from birth)
-     */
-    function getFullDashaSequence(chart) {
-        var moonLong = chart.planets.Moon.sidereal;
-        var birthJD = chart.jd;
-        return AstroCore.calculateDasha(moonLong, birthJD);
+  function order(startLord) {
+    const i = Astro.DASHA_ORDER.indexOf(startLord);
+    const seq = [];
+    for (let k = 0; k < 9; k++) seq.push(Astro.DASHA_ORDER[(i + k) % 9]);
+    return seq;
+  }
+
+  function jdToDate(jd) {
+    // Convert JD to Gregorian date (UT)
+    const z = Math.floor(jd + 0.5);
+    const f = jd + 0.5 - z;
+    let A = z;
+    if (z >= 2299161) {
+      const alpha = Math.floor((z - 1867216.25) / 36524.25);
+      A = z + 1 + alpha - Math.floor(alpha / 4);
     }
+    const B = A + 1524;
+    const C = Math.floor((B - 122.1) / 365.25);
+    const D = Math.floor(365.25 * C);
+    const E = Math.floor((B - D) / 30.6001);
+    const day = B - D - Math.floor(30.6001 * E) + f;
+    const month = E < 14 ? E - 1 : E - 13;
+    const year = month > 2 ? C - 4716 : C - 4715;
+    return new Date(Date.UTC(year, month - 1, Math.floor(day)));
+  }
 
-    /**
-     * Get Antardasha periods for a given Mahadasha
-     */
-    function getAntardashas(dasha) {
-        return AstroCore.calculateAntardasha(dasha);
+  function addDays(jd, days) {
+    return jd + days;
+  }
+
+  // birth Moon -> balance of first dasha
+  function birthBalance(moonLon) {
+    const nak = Math.floor(moonLon / Astro.NAK_SPAN);
+    const lord = Astro.NAK[nak % 27].lord;
+    const into = moonLon - nak * Astro.NAK_SPAN;
+    const fraction = into / Astro.NAK_SPAN; // elapsed fraction of nakshatra
+    const total = Astro.DASHA_YEARS[lord];
+    const elapsed = total * fraction;
+    const balance = total - elapsed;
+    return { lord, balance, elapsedYears: elapsed, fraction };
+  }
+
+  // Build MD list spanning from birth for `spanYears`
+  function mahadashas(chart, spanYears) {
+    const bb = birthBalance(chart.planets.Moon.lon);
+    const seq = order(bb.lord);
+    let jd = chart.jd;
+    const list = [];
+    // first (partial) MD
+    let firstDur = bb.balance * YEAR_DAYS;
+    list.push({ lord: bb.lord, startJd: jd, endJd: jd + firstDur, years: bb.balance });
+    jd += firstDur;
+    let idx = 1;
+    const endTarget = chart.jd + spanYears * YEAR_DAYS + 130 * YEAR_DAYS; // generous
+    while (jd < endTarget) {
+      const lord = seq[idx % 9];
+      const dur = Astro.DASHA_YEARS[lord] * YEAR_DAYS;
+      list.push({ lord, startJd: jd, endJd: jd + dur, years: Astro.DASHA_YEARS[lord] });
+      jd += dur;
+      idx++;
     }
+    return list;
+  }
 
-    /**
-     * Get Pratyantardasha periods for a given Antardasha
-     */
-    function getPratyantardashas(antardasha) {
-        return AstroCore.calculatePratyantardasha(antardasha);
-    }
+  function antardashas(md) {
+    const seq = order(md.lord);
+    const totalDays = md.endJd - md.startJd;
+    const mdYears = Astro.DASHA_YEARS[md.lord];
+    let jd = md.startJd;
+    const list = [];
+    seq.forEach((lord) => {
+      const frac = Astro.DASHA_YEARS[lord] / 120;
+      const dur = frac * (mdYears * YEAR_DAYS);
+      // for the first (partial) MD, scale proportionally so ADs fit the actual span
+      list.push({ mdLord: md.lord, lord, startJd: jd, endJd: jd + dur });
+      jd += dur;
+    });
+    // normalise to fit actual MD span (handles partial first MD)
+    const built = jd - md.startJd;
+    const scale = totalDays / built;
+    let cursor = md.startJd;
+    list.forEach((ad) => {
+      const d = (ad.endJd - ad.startJd) * scale;
+      ad.startJd = cursor;
+      ad.endJd = cursor + d;
+      cursor += d;
+    });
+    return list;
+  }
 
-    /**
-     * Get KP significators for marriage houses (2, 7, 11)
-     * Returns a set of planets that are significators of these houses
-     */
-    function getMarriageSignificatorPlanets(chart) {
-        var sigData = KP.getMarriageHouseSignificators(chart);
-        var planets = {};
+  function pratyantardashas(ad) {
+    const seq = order(ad.lord);
+    const totalDays = ad.endJd - ad.startJd;
+    let jd = ad.startJd;
+    const list = [];
+    seq.forEach((lord) => {
+      const frac = Astro.DASHA_YEARS[lord] / 120;
+      const dur = frac * totalDays;
+      list.push({ mdLord: ad.mdLord, adLord: ad.lord, lord, startJd: jd, endJd: jd + dur });
+      jd += dur;
+    });
+    return list;
+  }
 
-        MARRIAGE_HOUSES.forEach(function(h) {
-            sigData[h].forEach(function(entry) {
-                if (!planets[entry.planet]) {
-                    planets[entry.planet] = { houses: [], strength: 0 };
-                }
-                planets[entry.planet].houses.push(h);
-                planets[entry.planet].strength += 1;
-            });
-        });
+  // Find the running MD/AD/PD at a given jd
+  function runningAt(chart, jd, mdList) {
+    const mds = mdList || mahadashas(chart, 130);
+    const md = mds.find((m) => jd >= m.startJd && jd < m.endJd);
+    if (!md) return null;
+    const ad = antardashas(md).find((a) => jd >= a.startJd && jd < a.endJd);
+    if (!ad) return { md, ad: null, pd: null };
+    const pd = pratyantardashas(ad).find((p) => jd >= p.startJd && jd < p.endJd);
+    return { md, ad, pd };
+  }
 
-        return planets;
-    }
+  // Full expansion for next `spanYears` from a reference jd (e.g., today),
+  // returning AD-level periods (with PD nested) that overlap the window.
+  function expandWindow(chart, fromJd, spanYears) {
+    const toJd = fromJd + spanYears * YEAR_DAYS;
+    const mds = mahadashas(chart, spanYears + 130);
+    const periods = [];
+    mds.forEach((md) => {
+      if (md.endJd < fromJd || md.startJd > toJd) return;
+      antardashas(md).forEach((ad) => {
+        if (ad.endJd < fromJd || ad.startJd > toJd) return;
+        const pds = pratyantardashas(ad).filter((pd) => pd.endJd >= fromJd && pd.startJd <= toJd);
+        periods.push({ md: md.lord, ...ad, pds });
+      });
+    });
+    return { periods, mds, fromJd, toJd };
+  }
 
-    /**
-     * Get planets that signify negative houses (6, 8, 12) for marriage
-     */
-    function getNegativeSignificatorPlanets(chart) {
-        var significators = KP.calculateSignificators(chart);
-        var planets = {};
-        var planetNames = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'];
+  function fmt(jd) {
+    const d = jdToDate(jd);
+    return d.toISOString().slice(0, 10);
+  }
+  function fmtYM(jd) {
+    const d = jdToDate(jd);
+    return d.toLocaleString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+  }
 
-        planetNames.forEach(function(name) {
-            var sig = significators[name];
-            var negHouses = [];
-            sig.significatesHouses.forEach(function(h) {
-                if (NEGATIVE_HOUSES.indexOf(h) !== -1) {
-                    negHouses.push(h);
-                }
-            });
-            if (negHouses.length > 0) {
-                planets[name] = { houses: negHouses, strength: negHouses.length };
-            }
-        });
-
-        return planets;
-    }
-
-    /**
-     * Score a Dasha-Antardasha-Pratyantardasha period for marriage potential.
-     * Returns a score from -10 to +10.
-     * Positive = favorable for marriage, Negative = unfavorable.
-     */
-    function scorePeriodForMarriage(dashaLord, antarLord, pratyantarLord, marriageSignificators, negativeSignificators) {
-        var score = 0;
-        var reasons = [];
-
-        // Score Mahadasha lord
-        if (marriageSignificators[dashaLord]) {
-            var md = marriageSignificators[dashaLord];
-            score += md.strength * 2;
-            reasons.push(dashaLord + ' Mahadasha signifies house(s) ' + md.houses.join(','));
-        }
-        if (negativeSignificators[dashaLord]) {
-            score -= negativeSignificators[dashaLord].strength;
-            reasons.push(dashaLord + ' Mahadasha also signifies negative house(s) ' + negativeSignificators[dashaLord].houses.join(','));
-        }
-
-        // Score Antardasha lord (more weight than Mahadasha for timing)
-        if (marriageSignificators[antarLord]) {
-            var ad = marriageSignificators[antarLord];
-            score += ad.strength * 2.5;
-            reasons.push(antarLord + ' Antardasha signifies house(s) ' + ad.houses.join(','));
-        }
-        if (negativeSignificators[antarLord]) {
-            score -= negativeSignificators[antarLord].strength * 1.5;
-            reasons.push(antarLord + ' Antardasha also signifies negative house(s) ' + negativeSignificators[antarLord].houses.join(','));
-        }
-
-        // Score Pratyantardasha lord (most precise timing)
-        if (pratyantarLord) {
-            if (marriageSignificators[pratyantarLord]) {
-                var pd = marriageSignificators[pratyantarLord];
-                score += pd.strength * 3;
-                reasons.push(pratyantarLord + ' Pratyantardasha signifies house(s) ' + pd.houses.join(','));
-            }
-            if (negativeSignificators[pratyantarLord]) {
-                score -= negativeSignificators[pratyantarLord].strength * 2;
-            }
-        }
-
-        // Venus as natural marriage karaka - bonus
-        if (dashaLord === 'Venus' || antarLord === 'Venus' || pratyantarLord === 'Venus') {
-            score += 1;
-            reasons.push('Venus (marriage karaka) is active in this period');
-        }
-
-        // Jupiter as natural benefic for marriage - bonus
-        if (dashaLord === 'Jupiter' || antarLord === 'Jupiter' || pratyantarLord === 'Jupiter') {
-            score += 0.5;
-        }
-
-        return {
-            score: Math.max(-10, Math.min(10, score)),
-            reasons: reasons
-        };
-    }
-
-    /**
-     * Determine period strength rating from a score
-     */
-    function getStrengthRating(score) {
-        if (score >= 7) return { rating: 'strong', label: 'Strongly Favorable', cssClass: 'strength-strong' };
-        if (score >= 4) return { rating: 'moderate', label: 'Moderately Favorable', cssClass: 'strength-moderate' };
-        if (score >= 1) return { rating: 'mild', label: 'Mildly Favorable', cssClass: 'strength-mild' };
-        if (score >= -2) return { rating: 'neutral', label: 'Neutral', cssClass: 'strength-neutral' };
-        if (score >= -5) return { rating: 'challenging', label: 'Challenging', cssClass: 'strength-challenging' };
-        return { rating: 'difficult', label: 'Difficult', cssClass: 'strength-difficult' };
-    }
-
-    /**
-     * Find the currently running Dasha-Antardasha-Pratyantardasha
-     */
-    function getCurrentPeriod(chart, nowJD) {
-        var dashas = getFullDashaSequence(chart);
-        var currentDasha = null;
-        var currentAntar = null;
-        var currentPratyantar = null;
-
-        for (var i = 0; i < dashas.length; i++) {
-            if (nowJD >= dashas[i].startJD && nowJD < dashas[i].endJD) {
-                currentDasha = dashas[i];
-                break;
-            }
-        }
-
-        if (!currentDasha) return null;
-
-        var antars = getAntardashas(currentDasha);
-        for (var j = 0; j < antars.length; j++) {
-            if (nowJD >= antars[j].startJD && nowJD < antars[j].endJD) {
-                currentAntar = antars[j];
-                break;
-            }
-        }
-
-        if (!currentAntar) return { dasha: currentDasha, antardasha: null, pratyantardasha: null };
-
-        var pratyantars = getPratyantardashas(currentAntar);
-        for (var k = 0; k < pratyantars.length; k++) {
-            if (nowJD >= pratyantars[k].startJD && nowJD < pratyantars[k].endJD) {
-                currentPratyantar = pratyantars[k];
-                break;
-            }
-        }
-
-        return {
-            dasha: currentDasha,
-            antardasha: currentAntar,
-            pratyantardasha: currentPratyantar
-        };
-    }
-
-    /**
-     * Find the nearest marriage window from the current date.
-     * Scans upcoming Antardasha and Pratyantardasha periods that
-     * have strong marriage signification.
-     */
-    function findNearestMarriageWindow(chart, fromJD, yearsAhead) {
-        yearsAhead = yearsAhead || 10;
-        var endJD = fromJD + yearsAhead * 365.25;
-
-        var marriageSig = getMarriageSignificatorPlanets(chart);
-        var negativeSig = getNegativeSignificatorPlanets(chart);
-        var dashas = getFullDashaSequence(chart);
-
-        var windows = [];
-
-        for (var i = 0; i < dashas.length; i++) {
-            var dasha = dashas[i];
-            // Skip dashas that are entirely before now or entirely after our window
-            if (dasha.endJD < fromJD) continue;
-            if (dasha.startJD > endJD) break;
-
-            var antars = getAntardashas(dasha);
-            for (var j = 0; j < antars.length; j++) {
-                var antar = antars[j];
-                if (antar.endJD < fromJD) continue;
-                if (antar.startJD > endJD) break;
-
-                // Score at Antardasha level first
-                var adScore = scorePeriodForMarriage(dasha.lord, antar.lord, null, marriageSig, negativeSig);
-
-                if (adScore.score >= 3) {
-                    // This Antardasha is favorable - find best Pratyantardasha within it
-                    var pratyantars = getPratyantardashas(antar);
-                    for (var k = 0; k < pratyantars.length; k++) {
-                        var pratyantar = pratyantars[k];
-                        if (pratyantar.endJD < fromJD) continue;
-                        if (pratyantar.startJD > endJD) break;
-
-                        var pdScore = scorePeriodForMarriage(dasha.lord, antar.lord, pratyantar.lord, marriageSig, negativeSig);
-                        if (pdScore.score >= 5) {
-                            windows.push({
-                                dasha: dasha.lord,
-                                antardasha: antar.lord,
-                                pratyantardasha: pratyantar.lord,
-                                startJD: Math.max(pratyantar.startJD, fromJD),
-                                endJD: pratyantar.endJD,
-                                startDate: AstroCore.jdToDate(Math.max(pratyantar.startJD, fromJD)),
-                                endDate: AstroCore.jdToDate(pratyantar.endJD),
-                                score: pdScore.score,
-                                strength: getStrengthRating(pdScore.score),
-                                reasons: pdScore.reasons
-                            });
-                        }
-                    }
-                }
-            }
-        }
-
-        // Sort by score descending, then by start date
-        windows.sort(function(a, b) {
-            if (b.score !== a.score) return b.score - a.score;
-            return a.startJD - b.startJD;
-        });
-
-        return windows;
-    }
-
-    /**
-     * Generate a 20-year forecast showing relationship strength/weakness
-     * at each Dasha-Antardasha period level.
-     */
-    function generate20YearForecast(chart, fromJD) {
-        var endJD = fromJD + 20 * 365.25;
-        var marriageSig = getMarriageSignificatorPlanets(chart);
-        var negativeSig = getNegativeSignificatorPlanets(chart);
-        var dashas = getFullDashaSequence(chart);
-
-        var forecast = [];
-
-        for (var i = 0; i < dashas.length; i++) {
-            var dasha = dashas[i];
-            if (dasha.endJD < fromJD) continue;
-            if (dasha.startJD > endJD) break;
-
-            var antars = getAntardashas(dasha);
-            for (var j = 0; j < antars.length; j++) {
-                var antar = antars[j];
-                if (antar.endJD < fromJD) continue;
-                if (antar.startJD > endJD) break;
-
-                var adScore = scorePeriodForMarriage(dasha.lord, antar.lord, null, marriageSig, negativeSig);
-                var strength = getStrengthRating(adScore.score);
-
-                var effectiveStart = Math.max(antar.startJD, fromJD);
-                var effectiveEnd = Math.min(antar.endJD, endJD);
-
-                // Get Pratyantardasha breakdown for finer detail
-                var pratyantarBreakdown = [];
-                var pratyantars = getPratyantardashas(antar);
-                for (var k = 0; k < pratyantars.length; k++) {
-                    var pd = pratyantars[k];
-                    if (pd.endJD < fromJD) continue;
-                    if (pd.startJD > endJD) break;
-
-                    var pdScore = scorePeriodForMarriage(dasha.lord, antar.lord, pd.lord, marriageSig, negativeSig);
-                    var pdStrength = getStrengthRating(pdScore.score);
-                    pratyantarBreakdown.push({
-                        lord: pd.lord,
-                        startJD: Math.max(pd.startJD, fromJD),
-                        endJD: Math.min(pd.endJD, endJD),
-                        startDate: AstroCore.jdToDate(Math.max(pd.startJD, fromJD)),
-                        endDate: AstroCore.jdToDate(Math.min(pd.endJD, endJD)),
-                        score: pdScore.score,
-                        strength: pdStrength,
-                        reasons: pdScore.reasons
-                    });
-                }
-
-                forecast.push({
-                    dashaLord: dasha.lord,
-                    antarLord: antar.lord,
-                    startJD: effectiveStart,
-                    endJD: effectiveEnd,
-                    startDate: AstroCore.jdToDate(effectiveStart),
-                    endDate: AstroCore.jdToDate(effectiveEnd),
-                    score: adScore.score,
-                    strength: strength,
-                    reasons: adScore.reasons,
-                    pratyantardasha: pratyantarBreakdown
-                });
-            }
-        }
-
-        return forecast;
-    }
-
-    /**
-     * Find overlapping favorable periods between two charts
-     */
-    function findOverlappingWindows(boyWindows, girlWindows) {
-        var overlaps = [];
-
-        for (var i = 0; i < boyWindows.length; i++) {
-            var bw = boyWindows[i];
-            for (var j = 0; j < girlWindows.length; j++) {
-                var gw = girlWindows[j];
-                // Check overlap
-                var overlapStart = Math.max(bw.startJD, gw.startJD);
-                var overlapEnd = Math.min(bw.endJD, gw.endJD);
-
-                if (overlapStart < overlapEnd) {
-                    overlaps.push({
-                        startJD: overlapStart,
-                        endJD: overlapEnd,
-                        startDate: AstroCore.jdToDate(overlapStart),
-                        endDate: AstroCore.jdToDate(overlapEnd),
-                        boyPeriod: bw.dasha + '-' + bw.antardasha + '-' + bw.pratyantardasha,
-                        girlPeriod: gw.dasha + '-' + gw.antardasha + '-' + gw.pratyantardasha,
-                        combinedScore: (bw.score + gw.score) / 2,
-                        boyScore: bw.score,
-                        girlScore: gw.score
-                    });
-                }
-            }
-        }
-
-        // Sort by combined score
-        overlaps.sort(function(a, b) { return b.combinedScore - a.combinedScore; });
-
-        return overlaps;
-    }
-
-    /**
-     * Get the current JD for "now"
-     */
-    function getNowJD() {
-        var now = new Date();
-        return AstroCore.dateToJD(
-            now.getFullYear(), now.getMonth() + 1, now.getDate(),
-            now.getHours(), now.getMinutes(), now.getSeconds(),
-            -now.getTimezoneOffset() / 60
-        );
-    }
-
-    /**
-     * Format a date object from jdToDate into a readable string
-     */
-    function formatDate(dateObj) {
-        var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        return dateObj.day + ' ' + months[dateObj.month - 1] + ' ' + dateObj.year;
-    }
-
-    /**
-     * Get interpretation text for a marriage period
-     */
-    function getInterpretation(dashaLord, antarLord, pratyantarLord, score, marriageSig) {
-        var text = '';
-
-        if (score >= 7) {
-            text = 'Highly favorable period for marriage. ';
-        } else if (score >= 4) {
-            text = 'Moderately favorable period. ';
-        } else if (score >= 1) {
-            text = 'Mildly supportive period. ';
-        } else if (score >= -2) {
-            text = 'Neutral period with no strong indications. ';
-        } else if (score >= -5) {
-            text = 'Challenging period - delays or obstacles likely. ';
-        } else {
-            text = 'Difficult period - not recommended for marriage. ';
-        }
-
-        // Add specific reasoning
-        if (marriageSig[dashaLord]) {
-            text += dashaLord + ' (MD) connects to marriage house(s) ' + marriageSig[dashaLord].houses.join(', ') + '. ';
-        }
-        if (marriageSig[antarLord]) {
-            text += antarLord + ' (AD) connects to house(s) ' + marriageSig[antarLord].houses.join(', ') + '. ';
-        }
-        if (pratyantarLord && marriageSig[pratyantarLord]) {
-            text += pratyantarLord + ' (PD) activates house(s) ' + marriageSig[pratyantarLord].houses.join(', ') + '.';
-        }
-
-        return text;
-    }
-
-    // ===== Public API =====
-    return {
-        getFullDashaSequence: getFullDashaSequence,
-        getAntardashas: getAntardashas,
-        getPratyantardashas: getPratyantardashas,
-        getMarriageSignificatorPlanets: getMarriageSignificatorPlanets,
-        getNegativeSignificatorPlanets: getNegativeSignificatorPlanets,
-        scorePeriodForMarriage: scorePeriodForMarriage,
-        getStrengthRating: getStrengthRating,
-        getCurrentPeriod: getCurrentPeriod,
-        findNearestMarriageWindow: findNearestMarriageWindow,
-        generate20YearForecast: generate20YearForecast,
-        findOverlappingWindows: findOverlappingWindows,
-        getNowJD: getNowJD,
-        formatDate: formatDate,
-        getInterpretation: getInterpretation
-    };
+  return {
+    YEAR_DAYS, order, jdToDate, addDays, birthBalance,
+    mahadashas, antardashas, pratyantardashas, runningAt, expandWindow,
+    fmt, fmtYM,
+  };
 })();
+
+if (typeof module !== 'undefined' && module.exports) module.exports = Dasha;
