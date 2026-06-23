@@ -1,0 +1,28 @@
+{
+  "id": "FEAT-003",
+  "type": "feat",
+  "description": "Implement Vimshottari Dasha marriage timeline prediction, 20-year Dasha/transit relationship forecast showing strength and weakness periods, and transit analysis engine.",
+  "status": "pending",
+  "steps": [
+    "Create js/dasha.js implementing: (a) Complete Vimshottari Dasha system - Mahadasha (major period) for all 9 planets with correct year durations (Ketu 7, Venus 20, Sun 6, Moon 10, Mars 7, Rahu 18, Jupiter 16, Saturn 19, Mercury 17). (b) Antardasha (sub-period) calculation within each Mahadasha. (c) Pratyantardasha (sub-sub-period) calculation. (d) Birth star-based Dasha starting point calculation. (e) Marriage timeline prediction logic: identify Dasha periods where 7th house significators are active (planets connected to 2nd, 7th, 11th houses running their period). (f) Find the nearest marriage window based on current running Dasha-Antardasha-Pratyantardasha.",
+    "Create js/transit.js implementing: (a) Approximate planetary transit positions for any future date (simplified ephemeris for 20-year projections). (b) Transit aspects to natal positions (conjunction, opposition, trine, square, sextile). (c) Saturn transit analysis (Sade Sati, transit over 7th house). (d) Jupiter transit analysis (transit over 7th, aspects to Venus/7th lord). (e) Rahu-Ketu transit axis analysis relative to 1-7 axis. (f) Double transit theory (Jupiter + Saturn both influencing marriage houses).",
+    "Wire up the Marriage Timeline tab in app.js: Display the predicted nearest marriage timeline for both boy and girl, showing which Dasha-Antardasha-Pratyantardasha period favors marriage, and supporting transit conditions. Show overlapping favorable periods for both charts.",
+    "Wire up the 20-Year Forecast tab: Generate a comprehensive year-by-year (or period-by-period) forecast showing relationship strength/weakness. For each Dasha-Antardasha period in the next 20 years: (a) Rate relationship strength (strong/moderate/weak/challenging) based on running Dasha lords' significations. (b) Consider Pratyantardasha sub-periods for finer granularity. (c) Factor in major transits (Saturn, Jupiter, Rahu-Ketu) during each period. (d) Display as a timeline/table with color coding: green for strong periods, yellow for moderate, orange for challenging, red for difficult periods. (e) Include brief interpretive text for each period explaining why it's favorable or challenging."
+  ],
+  "acceptance_criteria": [
+    "Marriage Timeline tab shows predicted marriage windows with supporting Dasha and transit data",
+    "20-Year Forecast tab shows a period-by-period relationship strength assessment with color coding",
+    "Dasha calculations correctly compute Mahadasha, Antardasha, and Pratyantardasha sequences",
+    "Transit analysis shows planetary positions and their impact on relationship houses",
+    "Both boy and girl charts are analyzed and compared for overlapping favorable periods",
+    "The forecast considers both Dasha periods AND planetary transits together"
+  ],
+  "verification": [
+    "Enter birth details and verify Marriage Timeline tab shows specific predicted dates/periods",
+    "Verify 20-Year Forecast tab shows chronological periods with strength ratings and color coding",
+    "Verify Dasha sequence starts from correct planet based on birth nakshatra",
+    "Check that transit analysis references actual planetary positions"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

@@ -1,0 +1,7 @@
+{
+  "task_id": "task-marriage-matching-module",
+  "task_description": "Build a comprehensive marriage matching module in HTML/CSS/JS that analyzes horoscopes of both boy and girl using BPHS and KP astrology. Includes house signification analysis, marriage timeline prediction via Vimshottari Dasha, 20-year relationship strength/weakness forecast considering Dasha and transits, health compatibility screening, Ashtakoota (8 koota) matching, Dashakoota (10 koota) matching, a built-in Technical Manual, and PDF report generation.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003", "FEAT-004", "FEAT-005"],
+  "blocked_reason": null
+}

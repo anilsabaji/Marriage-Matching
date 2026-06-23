@@ -1,0 +1,26 @@
+{
+  "id": "FEAT-005",
+  "type": "feat",
+  "description": "Implement the Technical Manual tab with comprehensive documentation and the PDF Print Report tab with full report generation capability.",
+  "status": "pending",
+  "steps": [
+    "Wire up the Technical Manual tab content in index.html (or dynamically via app.js): Write comprehensive documentation covering: (a) Overview of the module and its purpose. (b) BPHS methodology explanation - how house significations are assessed, yoga identification rules. (c) KP methodology explanation - sub-lord theory, significator determination, ruling planet concept. (d) Vimshottari Dasha system explanation - how periods are calculated, marriage timing logic. (e) Transit analysis methodology - double transit theory, Saturn/Jupiter/Rahu-Ketu transit effects. (f) Health compatibility methodology - which planetary combinations indicate which health concerns. (g) Ashtakoota matching system explanation - each of the 8 kootas with scoring rules. (h) Dashakoota matching system explanation - each of the 10 kootas with rules. (i) Interpretation guidelines - how to read the results, threshold scores, red flags. (j) References and source texts. The manual should be well-formatted with headings, tables, and clear explanations.",
+    "Create js/pdf-report.js implementing PDF report generation using html2pdf.js (loaded from CDN): (a) Compile all assessment results into a formatted report. (b) Include cover page with boy and girl details. (c) Include all sections: Bhava analysis, BPHS assessment, KP assessment, Marriage timeline, 20-year forecast summary, Health compatibility, Ashtakoota scores, Dashakoota scores. (d) Format tables and color coding for PDF output. (e) Add page breaks between major sections. (f) Include summary/conclusion section with overall compatibility verdict.",
+    "Wire up the PDF Report tab in app.js: Add a 'Generate PDF Report' button that triggers the pdf-report.js compilation and download. Show a preview of what will be exported. Include options for which sections to include in the report."
+  ],
+  "acceptance_criteria": [
+    "Technical Manual tab displays comprehensive documentation of all methodologies used",
+    "PDF Report tab has a Generate button that produces a downloadable PDF",
+    "PDF contains all assessment sections with proper formatting",
+    "Technical Manual covers all 8 main topics (BPHS, KP, Dasha, Transit, Health, Ashtakoota, Dashakoota, interpretation)",
+    "PDF report includes cover page, all analysis sections, and summary"
+  ],
+  "verification": [
+    "Open Technical Manual tab and verify all methodology sections are present and readable",
+    "Enter birth details, then go to PDF Report tab and click Generate",
+    "Verify a PDF file is downloaded with all sections included",
+    "Check that PDF formatting is clean with proper page breaks"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

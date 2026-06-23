@@ -1,0 +1,30 @@
+{
+  "id": "FEAT-004",
+  "type": "feat",
+  "description": "Implement Health Compatibility screener, Ashtakoota (8 koota) matching with detailed scores, and Dashakoota (10 koota) matching with detailed scores.",
+  "status": "pending",
+  "steps": [
+    "Create js/health.js implementing a Health Compatibility Screener: (a) 6th house analysis (disease house) - planets in 6th, lord of 6th, afflictions. (b) 8th house analysis (longevity) - planets in 8th, lord of 8th. (c) Ascendant strength analysis for both partners. (d) Moon sign compatibility for mental health. (e) Mars dosha (Manglik) analysis and its health implications. (f) Saturn's influence on vitality. (g) Specific disease indicators from planetary combinations (Sun affliction = bone/heart, Moon = mental/fluid, Mars = blood/accidents, etc.). (h) Generate a health compatibility score and detailed report showing potential health concerns for both individuals and combined compatibility.",
+    "Create js/koota.js implementing Ashtakoota (8 Koota) matching: (a) Varna Koota (1 point) - spiritual compatibility based on Moon sign varna (Brahmin/Kshatriya/Vaishya/Shudra). (b) Vashya Koota (2 points) - mutual attraction/dominance. (c) Tara Koota (3 points) - destiny compatibility based on birth star count. (d) Yoni Koota (4 points) - physical/sexual compatibility based on animal symbols of nakshatras. (e) Graha Maitri (5 points) - mental compatibility based on Moon sign lords' friendship. (f) Gana Koota (6 points) - temperament matching (Deva/Manushya/Rakshasa). (g) Bhakoot Koota (7 points) - emotional compatibility and progeny. (h) Nadi Koota (8 points) - health and genes compatibility (Vata/Pitta/Kapha). Total maximum: 36 points. Show detailed breakdown and final score.",
+    "Extend js/koota.js with Dashakoota (10 Koota) matching (South Indian system): (a) Dina Koota - day/star compatibility. (b) Gana Koota - temperament. (c) Mahendra Koota - prosperity and longevity. (d) Stree Deergha - welfare of wife. (e) Yoni Koota - sexual compatibility. (f) Rashi Koota - sign compatibility. (g) Rasyadhipathi (Graha Maitri) - planetary friendship. (h) Vasya Koota - magnetic control. (i) Rajju Koota - longevity of husband (most important in South Indian system). (j) Vedha Koota - affliction check. Show each koota result with pass/fail or score and overall compatibility percentage.",
+    "Wire up Health Compatibility tab in app.js: Display health analysis for both partners, combined health compatibility score, and detailed findings.",
+    "Wire up Ashtakoota tab in app.js: Display detailed 8-koota matching table with individual scores, explanations for each koota, and total score out of 36 with interpretation (below 18 = not recommended, 18-24 = average, 24-32 = good, 32-36 = excellent).",
+    "Wire up Dashakoota tab in app.js: Display detailed 10-koota matching results with pass/fail for each, special emphasis on Rajju dosha, and overall compatibility assessment."
+  ],
+  "acceptance_criteria": [
+    "Health Compatibility tab shows health analysis for both individuals and combined compatibility score",
+    "Ashtakoota tab shows all 8 kootas with individual scores totaling up to 36",
+    "Dashakoota tab shows all 10 kootas with pass/fail results",
+    "Nadi Koota correctly identifies Vata/Pitta/Kapha from nakshatra",
+    "Rajju Koota analysis is highlighted as important in Dashakoota",
+    "Each koota has explanatory text describing what it measures"
+  ],
+  "verification": [
+    "Enter birth details and verify Health Compatibility tab shows analysis with scores",
+    "Verify Ashtakoota tab shows all 8 kootas with correct maximum points (1+2+3+4+5+6+7+8=36)",
+    "Verify Dashakoota tab shows all 10 kootas with results",
+    "Test with known matching pairs to verify scoring logic"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

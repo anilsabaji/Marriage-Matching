@@ -1,0 +1,28 @@
+{
+  "project_type": "Self-contained HTML/CSS/JS astrological marriage matching application",
+  "language": "HTML, CSS, JavaScript",
+  "build_system": "None - static HTML files opened directly in browser",
+  "test_framework": "Manual browser testing - open index.html in browser",
+  "build_command": "N/A - static files",
+  "test_command": "Open index.html in browser and verify all tabs render correctly",
+  "verification_instructions": "1. Open index.html in a browser. 2. Verify all tabs are present and navigable. 3. Enter sample birth details and verify calculations render. 4. Test PDF export functionality.",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "No setup needed - open index.html in any modern browser",
+  "environment_constraints": "OPEN_INTERNET - can use CDN links for libraries like html2pdf.js, jspdf, etc.",
+  "contribution_requirements": "All code should be self-contained in HTML/CSS/JS files in the repository root",
+  "key_patterns": "Single-page application with tab-based navigation. All astrological logic implemented in JavaScript.",
+  "relevant_files": [
+    "index.html - main entry point with tab UI",
+    "css/styles.css - all styling",
+    "js/astro-core.js - core astronomical/astrological calculations (planetary positions, house cusps)",
+    "js/bphs.js - BPHS house significations and assessment",
+    "js/kp.js - KP sub-lord theory assessment",
+    "js/dasha.js - Vimshottari Dasha calculations and timeline",
+    "js/transit.js - Transit analysis",
+    "js/koota.js - Ashtakoota and Dashakoota matching",
+    "js/health.js - Health compatibility screener",
+    "js/pdf-report.js - PDF generation logic",
+    "js/app.js - Main application controller, UI interactions"
+  ],
+  "directory_structure": "/ - root contains index.html; /css/ - stylesheets; /js/ - JavaScript modules"
+}

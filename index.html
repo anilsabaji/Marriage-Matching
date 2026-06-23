@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marriage Matching Module - Vedic Astrology</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+    <header class="app-header">
+        <h1>Marriage Matching Module</h1>
+        <p class="subtitle">Comprehensive Vedic Astrology Compatibility Analysis</p>
+    </header>
+
+    <nav class="tab-navigation">
+        <button class="tab-btn active" data-tab="input">Input</button>
+        <button class="tab-btn" data-tab="bhava">Bhava/House Analysis</button>
+        <button class="tab-btn" data-tab="bphs">BPHS Assessment</button>
+        <button class="tab-btn" data-tab="kp">KP Assessment</button>
+        <button class="tab-btn" data-tab="timeline">Marriage Timeline</button>
+        <button class="tab-btn" data-tab="forecast">20-Year Forecast</button>
+        <button class="tab-btn" data-tab="health">Health Compatibility</button>
+        <button class="tab-btn" data-tab="ashtakoota">Ashtakoota</button>
+        <button class="tab-btn" data-tab="dashakoota">Dashakoota</button>
+        <button class="tab-btn" data-tab="manual">Technical Manual</button>
+        <button class="tab-btn" data-tab="pdf">PDF Report</button>
+    </nav>
+
+    <main class="tab-content-container">
+        <!-- Input Tab -->
+        <section id="tab-input" class="tab-panel active">
+            <h2>Birth Details Input</h2>
+            <form id="birth-details-form">
+                <div class="form-row">
+                    <!-- Boy's Details -->
+                    <div class="form-section">
+                        <h3>Boy's Details</h3>
+                        <div class="form-group">
+                            <label for="boy-name">Name</label>
+                            <input type="text" id="boy-name" name="boy-name" placeholder="Enter boy's name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="boy-dob">Date of Birth</label>
+                            <input type="date" id="boy-dob" name="boy-dob" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="boy-tob">Time of Birth</label>
+                            <input type="time" id="boy-tob" name="boy-tob" step="1" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="boy-lat">Latitude</label>
+                            <input type="number" id="boy-lat" name="boy-lat" step="0.0001" min="-90" max="90" placeholder="e.g., 28.6139" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="boy-lng">Longitude</label>
+                            <input type="number" id="boy-lng" name="boy-lng" step="0.0001" min="-180" max="180" placeholder="e.g., 77.2090" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="boy-tz">Timezone (UTC offset in hours)</label>
+                            <input type="number" id="boy-tz" name="boy-tz" step="0.5" min="-12" max="14" placeholder="e.g., 5.5 for IST" required>
+                        </div>
+                    </div>
+
+                    <!-- Girl's Details -->
+                    <div class="form-section">
+                        <h3>Girl's Details</h3>
+                        <div class="form-group">
+                            <label for="girl-name">Name</label>
+                            <input type="text" id="girl-name" name="girl-name" placeholder="Enter girl's name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="girl-dob">Date of Birth</label>
+                            <input type="date" id="girl-dob" name="girl-dob" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="girl-tob">Time of Birth</label>
+                            <input type="time" id="girl-tob" name="girl-tob" step="1" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="girl-lat">Latitude</label>
+                            <input type="number" id="girl-lat" name="girl-lat" step="0.0001" min="-90" max="90" placeholder="e.g., 28.6139" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="girl-lng">Longitude</label>
+                            <input type="number" id="girl-lng" name="girl-lng" step="0.0001" min="-180" max="180" placeholder="e.g., 77.2090" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="girl-tz">Timezone (UTC offset in hours)</label>
+                            <input type="number" id="girl-tz" name="girl-tz" step="0.5" min="-12" max="14" placeholder="e.g., 5.5 for IST" required>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">Calculate Matching</button>
+                    <button type="reset" class="btn-secondary">Reset</button>
+                </div>
+            </form>
+            <div id="input-status" class="status-message"></div>
+        </section>
+
+        <!-- Bhava/House Analysis Tab -->
+        <section id="tab-bhava" class="tab-panel">
+            <h2>Bhava / House Analysis</h2>
+            <div id="bhava-content">
+                <p class="placeholder-text">Enter birth details in the Input tab to generate Bhava/House analysis.</p>
+            </div>
+        </section>
+
+        <!-- BPHS Assessment Tab -->
+        <section id="tab-bphs" class="tab-panel">
+            <h2>BPHS Assessment</h2>
+            <div id="bphs-content">
+                <p class="placeholder-text">Enter birth details in the Input tab to generate BPHS assessment.</p>
+            </div>
+        </section>
+
+        <!-- KP Assessment Tab -->
+        <section id="tab-kp" class="tab-panel">
+            <h2>KP System Assessment</h2>
+            <div id="kp-content">
+                <p class="placeholder-text">Enter birth details in the Input tab to generate KP assessment.</p>
+            </div>
+        </section>
+
+        <!-- Marriage Timeline Tab -->
+        <section id="tab-timeline" class="tab-panel">
+            <h2>Marriage Timeline</h2>
+            <div id="timeline-content">
+                <p class="placeholder-text">Enter birth details in the Input tab to generate marriage timeline analysis.</p>
+            </div>
+        </section>
+
+        <!-- 20-Year Forecast Tab -->
+        <section id="tab-forecast" class="tab-panel">
+            <h2>20-Year Relationship Forecast</h2>
+            <div id="forecast-content">
+                <p class="placeholder-text">Enter birth details in the Input tab to generate the 20-year forecast.</p>
+            </div>
+        </section>
+
+        <!-- Health Compatibility Tab -->
+        <section id="tab-health" class="tab-panel">
+            <h2>Health Compatibility</h2>
+            <div id="health-content">
+                <p class="placeholder-text">Enter birth details in the Input tab to generate health compatibility analysis.</p>
+            </div>
+        </section>
+
+        <!-- Ashtakoota Tab -->
+        <section id="tab-ashtakoota" class="tab-panel">
+            <h2>Ashtakoota Matching</h2>
+            <div id="ashtakoota-content">
+                <p class="placeholder-text">Enter birth details in the Input tab to generate Ashtakoota scores.</p>
+            </div>
+        </section>
+
+        <!-- Dashakoota Tab -->
+        <section id="tab-dashakoota" class="tab-panel">
+            <h2>Dashakoota Matching</h2>
+            <div id="dashakoota-content">
+                <p class="placeholder-text">Enter birth details in the Input tab to generate Dashakoota scores.</p>
+            </div>
+        </section>
+
+        <!-- Technical Manual Tab -->
+        <section id="tab-manual" class="tab-panel">
+            <h2>Technical Manual</h2>
+            <div id="manual-content">
+                <div class="manual-section">
+                    <h3>Overview</h3>
+                    <p>This Marriage Matching Module performs comprehensive compatibility analysis using both BPHS (Brihat Parashara Hora Shastra) and KP (Krishnamurti Paddhati) systems of Vedic Astrology.</p>
+                </div>
+                <div class="manual-section">
+                    <h3>Calculation Methods</h3>
+                    <h4>Planetary Positions</h4>
+                    <p>Planetary longitudes are calculated using simplified astronomical algorithms based on orbital elements. The calculations account for mean anomaly, equation of center, and perturbation effects for each planet.</p>
+                    <h4>Ayanamsa</h4>
+                    <p>The Lahiri (Chitrapaksha) Ayanamsa is used to convert tropical positions to sidereal. The ayanamsa value is computed based on the precession of equinoxes from the epoch.</p>
+                    <h4>House Cusps</h4>
+                    <p>House cusps are calculated using the Placidus system, which divides the diurnal and nocturnal arcs into equal time intervals.</p>
+                </div>
+                <div class="manual-section">
+                    <h3>Assessment Systems</h3>
+                    <h4>BPHS Assessment</h4>
+                    <p>Based on Brihat Parashara Hora Shastra, this evaluates house lordships, planetary significations, yogas, and dasha compatibility between the two charts.</p>
+                    <h4>KP Assessment</h4>
+                    <p>The Krishnamurti Paddhati system analyzes sub-lord positions and their significations to determine marriage prospects and compatibility.</p>
+                    <h4>Ashtakoota (8 Koota)</h4>
+                    <p>Traditional 8-point matching system evaluating Varna, Vashya, Tara, Yoni, Graha Maitri, Gana, Bhakoot, and Nadi with a maximum score of 36 points.</p>
+                    <h4>Dashakoota (10 Koota)</h4>
+                    <p>Extended 10-point matching system that adds Mahendra and Vedha to the standard 8 kootas for more comprehensive assessment.</p>
+                </div>
+                <div class="manual-section">
+                    <h3>Marriage Timeline</h3>
+                    <p>The timeline is derived by analyzing Vimshottari Dasha periods of the 7th house lord, Venus (karaka for marriage), and relevant sub-periods that activate marriage-signifying houses (2, 7, 11).</p>
+                </div>
+                <div class="manual-section">
+                    <h3>20-Year Forecast</h3>
+                    <p>The forecast analyzes Dasha, Antardasha, and Pratyantardasha periods along with major planetary transits over Saturn, Jupiter, and Rahu-Ketu cycles to project relationship strengths and challenges.</p>
+                </div>
+                <div class="manual-section">
+                    <h3>Health Compatibility</h3>
+                    <p>Health assessment examines the 6th and 8th house significations, planetary afflictions, and shared vulnerabilities in both charts to evaluate physical and mental health compatibility.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- PDF Report Tab -->
+        <section id="tab-pdf" class="tab-panel">
+            <h2>PDF Report</h2>
+            <div id="pdf-content">
+                <p>Generate a comprehensive PDF report containing all analysis results.</p>
+                <button id="generate-pdf" class="btn-primary" disabled>Generate PDF Report</button>
+                <p class="placeholder-text" id="pdf-status">Please calculate matching first using the Input tab.</p>
+            </div>
+        </section>
+    </main>
+
+    <footer class="app-footer">
+        <p>Marriage Matching Module - Vedic Astrology Compatibility Analysis</p>
+    </footer>
+
+    <script src="js/astro-core.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

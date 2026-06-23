@@ -1,0 +1,26 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Build the core application structure: index.html with tab-based navigation, CSS styling, and the core astronomical calculation engine. This establishes the foundation that all other features build upon.",
+  "status": "in_progress",
+  "steps": [
+    "Create index.html with a modern, responsive tab-based UI. Tabs needed: Input, Bhava/House Analysis, BPHS Assessment, KP Assessment, Marriage Timeline, 20-Year Forecast, Health Compatibility, Ashtakoota, Dashakoota, Technical Manual, PDF Report. Include CDN links for html2pdf.js.",
+    "Create css/styles.css with professional styling for the entire application - tab navigation, tables, charts, form inputs, print styles, responsive design.",
+    "Create js/astro-core.js implementing: (a) Planetary longitude calculations using Swiss Ephemeris-style algorithms for Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu. (b) Nakshatra determination (27 nakshatras with pada). (c) Rashi (zodiac sign) calculation. (d) House/Bhava cusp calculation using Placidus or KP Ayanamsa system. (e) Ayanamsa calculation (Lahiri/Chitrapaksha). (f) Julian Day conversion from date/time/timezone.",
+    "Create js/app.js as the main controller: tab switching logic, form handling for birth details input (date, time, place with lat/long for both boy and girl), orchestration of calculations when user submits data, and rendering results into each tab's content area."
+  ],
+  "acceptance_criteria": [
+    "index.html opens in browser without errors and shows all 11 tabs",
+    "Tab navigation works - clicking each tab shows its content panel",
+    "Input form accepts birth details (date, time, latitude, longitude, timezone) for both boy and girl",
+    "Core astronomical calculations produce planetary longitudes, nakshatras, and rashis for a given birth date/time/location",
+    "No JavaScript console errors on page load"
+  ],
+  "verification": [
+    "Open index.html in a browser and confirm all tabs render and are clickable",
+    "Check browser console for JavaScript errors",
+    "Verify the input form has fields for boy and girl birth details"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}
