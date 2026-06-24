@@ -8,7 +8,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <link rel="stylesheet" href="css/styles.css?v=13" />
+  <link rel="stylesheet" href="css/styles.css?v=14" />
   <!-- html2pdf for PDF export (graceful fallback to window.print) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" defer></script>
 </head>
@@ -31,13 +31,14 @@
       <button class="tab-btn" data-tab="bphs">4 &middot; BPHS Assessment</button>
       <button class="tab-btn" data-tab="kp">5 &middot; KP Assessment</button>
       <button class="tab-btn" data-tab="koota">6 &middot; Koota Matching</button>
-      <button class="tab-btn" data-tab="timing">7 &middot; Marriage Timing</button>
-      <button class="tab-btn" data-tab="forecast">8 &middot; 20-Year Forecast</button>
-      <button class="tab-btn" data-tab="transit">9 &middot; Transits</button>
-      <button class="tab-btn" data-tab="health">10 &middot; Health Compatibility</button>
-      <button class="tab-btn" data-tab="sarvashtaka">11 &middot; Sarvashtakavarga</button>
-      <button class="tab-btn" data-tab="manual">12 &middot; Technical Manual</button>
-      <button class="tab-btn" data-tab="report">13 &middot; PDF Report</button>
+      <button class="tab-btn" data-tab="kuja">7 &middot; Kuja Dosha</button>
+      <button class="tab-btn" data-tab="timing">8 &middot; Marriage Timing</button>
+      <button class="tab-btn" data-tab="forecast">9 &middot; 20-Year Forecast</button>
+      <button class="tab-btn" data-tab="transit">10 &middot; Transits</button>
+      <button class="tab-btn" data-tab="health">11 &middot; Health Compatibility</button>
+      <button class="tab-btn" data-tab="sarvashtaka">12 &middot; Sarvashtakavarga</button>
+      <button class="tab-btn" data-tab="manual">13 &middot; Technical Manual</button>
+      <button class="tab-btn" data-tab="report">14 &middot; PDF Report</button>
     </nav>
 
     <!-- 1. INPUT -->
@@ -112,6 +113,7 @@
     <section class="tab-panel" id="tab-bphs"><div class="card"><div class="placeholder">Generate a report to view the BPHS assessment.</div></div></section>
     <section class="tab-panel" id="tab-kp"><div class="card"><div class="placeholder">Generate a report to view the KP assessment.</div></div></section>
     <section class="tab-panel" id="tab-koota"><div class="card"><div class="placeholder">Generate a report to view Koota matching.</div></div></section>
+    <section class="tab-panel" id="tab-kuja"><div class="card"><div class="placeholder">Generate a report to view Kuja (Maṅgala) Dosha analysis.</div></div></section>
     <section class="tab-panel" id="tab-timing"><div class="card"><div class="placeholder">Generate a report to view marriage timing.</div></div></section>
     <section class="tab-panel" id="tab-forecast"><div class="card"><div class="placeholder">Generate a report to view the 20-year forecast.</div></div></section>
     <section class="tab-panel" id="tab-transit"><div class="card"><div class="placeholder">Generate a report to view transits.</div></div></section>
@@ -134,25 +136,26 @@
       <div id="report-content"><div class="placeholder">Generate a report first (Tab 1), then return here to export.</div></div>
     </section>
 
-    <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations on a self-contained ephemeris — see the Technical Manual for accuracy notes. <span style="opacity:.4">Build v5.0</span></p>
+    <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations on a self-contained ephemeris — see the Technical Manual for accuracy notes. <span style="opacity:.4">Build v5.1</span></p>
     <p class="dev-credit footer-credit">Developed by <b>Dr. Anil Sabaji</b> &nbsp;•&nbsp; Email: <a href="mailto:anilsabaji@gmail.com">anilsabaji@gmail.com</a></p>
   </div>
 
-  <script src="js/astro-core.js?v=13"></script>
-  <script src="js/bphs.js?v=13"></script>
-  <script src="js/bhava-indications.js?v=13"></script>
-  <script src="js/kp.js?v=13"></script>
-  <script src="js/koota.js?v=13"></script>
-  <script src="js/dasha.js?v=13"></script>
-  <script src="js/transit.js?v=13"></script>
-  <script src="js/planet-strength.js?v=13"></script>
-  <script src="js/chart-draw.js?v=13"></script>
-  <script src="js/separation.js?v=13"></script>
-  <script src="js/timeline.js?v=13"></script>
-  <script src="js/health.js?v=13"></script>
-  <script src="js/sarvashtaka.js?v=13"></script>
-  <script src="js/geocity.js?v=13"></script>
-  <script src="js/manual.js?v=13"></script>
-  <script src="js/app.js?v=13"></script>
+  <script src="js/astro-core.js?v=14"></script>
+  <script src="js/bphs.js?v=14"></script>
+  <script src="js/bhava-indications.js?v=14"></script>
+  <script src="js/kp.js?v=14"></script>
+  <script src="js/koota.js?v=14"></script>
+  <script src="js/dasha.js?v=14"></script>
+  <script src="js/transit.js?v=14"></script>
+  <script src="js/planet-strength.js?v=14"></script>
+  <script src="js/chart-draw.js?v=14"></script>
+  <script src="js/kuja.js?v=14"></script>
+  <script src="js/separation.js?v=14"></script>
+  <script src="js/timeline.js?v=14"></script>
+  <script src="js/health.js?v=14"></script>
+  <script src="js/sarvashtaka.js?v=14"></script>
+  <script src="js/geocity.js?v=14"></script>
+  <script src="js/manual.js?v=14"></script>
+  <script src="js/app.js?v=14"></script>
 </body>
 </html>

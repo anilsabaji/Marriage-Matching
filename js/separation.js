@@ -101,9 +101,20 @@ const Separation = (function () {
       const jA = afflictorsOfPlanet('Jupiter', chart);
       if (jA.length) { jA.forEach((p) => add(p, 0.5)); d1.push(`Jupiter (husband kāraka) afflicted by ${jA.join(', ')}.`); widScore += 8; }
     }
-    // Maṅgala dosha
-    const md = mangalDosha(chart);
-    if (md) { d1.push(`Maṅgala (Kuja) Dosha — Mars in ${md} — discord/aggression risk.`); add('Mars', 0.8); divScore += 12; sepScore += 8; }
+    // Maṅgala (Kuja) Dosha — with cancellation (Bhaṅga) from D1
+    if (typeof KujaDosha !== 'undefined') {
+      const kj = KujaDosha.analyze(chart);
+      if (kj.present && kj.netIntensity >= 12) {
+        add('Mars', 0.5 + (kj.netIntensity / 100) * 1.0);
+        d1.push(`Maṅgala (Kuja) Dosha — Mars ${kj.fromText} (net intensity ${kj.netIntensity}/100${kj.reductionPct ? `, reduced ${kj.reductionPct}% by Bhaṅga` : ''}) — discord/aggression risk.`);
+        divScore += Math.round(kj.netIntensity * 0.2); sepScore += Math.round(kj.netIntensity * 0.14);
+      } else if (kj.present) {
+        d1.push(`Maṅgala (Kuja) Dosha present but cancelled (Bhaṅga): ${kj.reasons.slice(0, 2).join('; ') || 'low intensity'} — minimal marital impact.`);
+      }
+    } else {
+      const md = mangalDosha(chart);
+      if (md) { d1.push(`Maṅgala (Kuja) Dosha — Mars in ${md} — discord/aggression risk.`); add('Mars', 0.8); divScore += 12; sepScore += 8; }
+    }
     // 8th-from-7th (= 2nd house) affliction → longevity of spouse
     const occ2 = Astro.PLANETS.filter((p) => chart.planets[p].house === 2);
     const mal2 = occ2.filter((p) => MAL.includes(p));

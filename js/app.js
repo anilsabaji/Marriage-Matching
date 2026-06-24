@@ -82,6 +82,7 @@
 
     const r = {};
     r.koota = Koota.fullMatch(boy, girl);
+    r.kuja = (typeof KujaDosha !== 'undefined') ? KujaDosha.couple(boy, girl) : null;
     r.bphs = BPHS.coupleAssessment(boy, girl);
     r.kp = KP.coupleAssessment(boy, girl);
     r.health = Health.compatibility(boy, girl);
@@ -104,6 +105,7 @@
     safeRender(renderBPHS, 'BPHS');
     safeRender(renderKP, 'KP');
     safeRender(renderKoota, 'Koota');
+    safeRender(renderKuja, 'Kuja');
     safeRender(renderTiming, 'Timing');
     safeRender(renderForecast, 'Forecast');
     safeRender(renderTransit, 'Transit');
@@ -476,6 +478,48 @@
       </div>
       <div class="card"><h3>Groom — Cuspal sub-lords (2,7,11,5,8)</h3>${kpCuspTable(b)}</div>
       <div class="card"><h3>Bride — Cuspal sub-lords (2,7,11,5,8)</h3>${kpCuspTable(g)}</div>`;
+  }
+
+  /* ---------------- Kuja (Maṅgala) Dosha ---------------- */
+  function kujaPartnerCard(name, k) {
+    const reasons = k.reasons && k.reasons.length
+      ? `<h3>Cancellation (Bhaṅga) factors</h3>${k.reasons.map((rz) => `<p class="small bhava-char-item">• ${esc(rz)}</p>`).join('')}`
+      : (k.present ? '<p class="small muted">No cancellation factors found — dosha stands.</p>' : '');
+    return `<div class="card" style="margin:0">
+      <h3>${esc(name)}</h3>
+      <div style="margin:4px 0 8px">${chip(k.level.label, k.level.cls)}</div>
+      <div class="kv"><span>Mars placement</span><span>${k.marsSign} (House ${k.marsHouse})</span></div>
+      <div class="kv"><span>Manglik from</span><span>${k.present ? esc(k.fromText) : 'None of Lagna / Moon / Venus'}</span></div>
+      <div class="kv"><span>Raw intensity</span><span>${k.intensity}/100</span></div>
+      <div class="kv"><span>Cancellation (Bhaṅga)</span><span>${k.reductionPct}% reduced</span></div>
+      <div class="kv"><span>Net (effective) dosha</span><span><b>${k.netIntensity}/100</b></span></div>
+      ${gaugePct('Effective Kuja Dosha', k.netIntensity, k.netIntensity >= 22 ? 'bad' : (k.netIntensity >= 12 ? 'mid' : 'good'))}
+      ${reasons}
+    </div>`;
+  }
+  function renderKuja() {
+    const r = state.results;
+    const ku = r.kuja;
+    if (!ku) { $('tab-kuja').innerHTML = '<div class="card"><div class="placeholder">No Kuja data.</div></div>'; return; }
+    $('tab-kuja').innerHTML = `
+      <div class="card">
+        <h2>Kuja (Maṅgala / Mangal) Dosha — D1 Analysis &amp; Cancellation</h2>
+        <div style="margin:6px 0">${chip(ku.verdict.label, ku.verdict.cls)} &nbsp; Match score <b>${ku.score}/100</b></div>
+        ${gaugePct('Kuja Dosha compatibility', ku.score)}
+        <p class="small">${esc(ku.note)}</p>
+        <p class="small muted">Manglik = Mars in the 1st, 2nd, 4th, 7th, 8th or 12th house counted from the Lagna,
+          the Moon, or Venus (D1 / Rāśi chart). The dosha can cause discord, delay or separation, but is
+          frequently <b>cancelled (Bhaṅga)</b> by Mars's own sign / exaltation, specific sign-in-house placements,
+          or Jupiter/Venus influence on Mars.</p>
+      </div>
+      <div class="grid-2">
+        ${kujaPartnerCard(state.boy.meta.name + ' (Groom)', ku.boy)}
+        ${kujaPartnerCard(state.girl.meta.name + ' (Bride)', ku.girl)}
+      </div>
+      <div class="callout small"><b>Matching rule:</b> if <i>both</i> partners are Manglik the dosha is mutually
+        cancelled (a recommended pairing for Manglik natives); if only one is Manglik and the dosha is not cancelled
+        in their own chart, classical texts advise caution or remedies. This module already feeds the <b>net</b>
+        (post-cancellation) Kuja Dosha into the separation/divorce risk and the 20-year strength forecast.</div>`;
   }
 
   /* ---------------- Koota ---------------- */
@@ -862,13 +906,14 @@
       ${section('3 · BPHS Assessment', 'bphs')}
       ${section('4 · KP Assessment', 'kp')}
       ${section('5 · Koota Matching (Ashtakoota & Dashakoota)', 'koota')}
+      ${section('5b · Kuja (Maṅgala) Dosha & Cancellation', 'kuja')}
       ${section('6 · Marriage Timing', 'timing')}
       ${section('7 · 20-Year Relationship Forecast', 'forecast')}
       ${section('8 · Transits (Gochara)', 'transit')}
       ${section('9 · Health Compatibility', 'health')}
       ${section('10 · Sarvashtakavarga (SAV)', 'sarvashtaka')}
 
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.0</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.1</p>
       <p class="dev-credit footer-credit">Developed by <b>Dr. Anil Sabaji</b> &nbsp;•&nbsp; Email: anilsabaji@gmail.com</p>
     `;
   }
@@ -945,7 +990,7 @@ body { padding: 24px; max-width: 1000px; margin: 0 auto; }
 <div class="report-meta">Generated ${esc(dateStr)} — Vedic Marriage Matching Module (BPHS &amp; KP)</div>
 <div id="report-content">${reportHtml}</div>
 <p class="footer-note" style="text-align:center;margin-top:24px;opacity:.7;font-size:11.5px">
-  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.0
+  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.1
 </p>
 <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>
 </body>
