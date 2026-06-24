@@ -41,8 +41,11 @@ const Manual = (function () {
           obliquity of the ecliptic and the geographic latitude via the standard
           ascendant equation, then reduced to sidereal.</li>
         <li><b>Houses:</b> BPHS analysis uses the <b>Whole-Sign</b> system (the sign of
-          the Ascendant is the 1st house). KP uses <b>Porphyry</b> intermediate cusps as
-          a practical approximation of Placidus for sub-lord work.</li>
+          the Ascendant is the 1st house). KP uses the <b>Placidus</b> house system with
+          the <b>KP (Krishnamurti) ayanamsa</b> — <b>KP-Old</b> for births before the year
+          2000 and <b>KP-New</b> from 2000 onward — so the KP chart, cusps and sub-lords
+          are computed on their own (slightly different) zodiac, while the Rāśi/BPHS and
+          Koota work stays on Lahiri (Chitrapakṣa).</li>
       </ul>
 
       <h3>2. KP Sub-lord Subdivision</h3>

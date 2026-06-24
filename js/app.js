@@ -461,6 +461,8 @@
     $('tab-kp').innerHTML = `
       <div class="card">
         <h2>KP (Krishnamurti Paddhati) Assessment</h2>
+        <div class="callout small">Computed with the <b>Placidus</b> house system and the <b>${esc(state.boy.kp.ayanamsaName)}</b> ayanamsa
+          for the Groom and <b>${esc(state.girl.kp.ayanamsaName)}</b> for the Bride (KP-Old is used for births before the year 2000).</div>
         <div style="margin:6px 0">${chip(r.kp.verdict.label, r.kp.verdict.cls)} &nbsp; Combined confidence <b>${r.kp.combined}%</b></div>
         ${r.kp.notes.map((n) => `<p class="small">• ${esc(n)}</p>`).join('')}
       </div>
@@ -968,7 +970,7 @@
       ${section('9 · Health Compatibility', 'health')}
       ${section('10 · Sarvashtakavarga (SAV)', 'sarvashtaka')}
 
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.3</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.4</p>
       <p class="dev-credit footer-credit">Developed by <b>Dr. Anil Sabaji</b> &nbsp;•&nbsp; Email: anilsabaji@gmail.com</p>
     `;
   }
@@ -1055,7 +1057,7 @@ body { padding: 24px; max-width: 1000px; margin: 0 auto; }
 <div class="report-meta">Generated ${esc(dateStr)} — Vedic Marriage Matching Module (BPHS &amp; KP)</div>
 <div id="report-content">${reportHtml}</div>
 <p class="footer-note" style="text-align:center;margin-top:24px;opacity:.7;font-size:11.5px">
-  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.3
+  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.4
 </p>
 <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>
 </body>

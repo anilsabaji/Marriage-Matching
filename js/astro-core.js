@@ -70,6 +70,22 @@ const Astro = (function () {
     return 23.853 + 0.0139688 * t;
   }
 
+  /* ---------- KP ayanamsa (Krishnamurti) ----------
+   * KP "New" (straight-line) ≈ 22.378333° at 1900.0, precessing 50.2388"/yr.
+   * KP "Old" ≈ ~1'12" (0.02°) less, used by KP practitioners for older charts.
+   * The module uses KP-Old for births before the year 2000, KP-New otherwise.
+   */
+  function kpYearOf(jd) { return (jd - 2451545.0) / 365.25 + 2000.0; }
+  function kpNewAyanamsa(jd) {
+    return 22.378333 + (kpYearOf(jd) - 1900.0) * (50.2388 / 3600);
+  }
+  function kpOldAyanamsa(jd) {
+    return kpNewAyanamsa(jd) - 0.0200;
+  }
+  function kpAyanamsa(jd, birthYear) {
+    return birthYear < 2000 ? kpOldAyanamsa(jd) : kpNewAyanamsa(jd);
+  }
+
   function obliquity(d) {
     return 23.4393 - 3.563e-7 * d; // degrees
   }
@@ -341,6 +357,62 @@ const Astro = (function () {
   }
 
   /* =========================================================================
+   * Placidus house cusps (tropical). Returns array index 1..12 of ecliptic
+   * longitudes. Intermediate cusps (11,12,2,3) found by semi-arc iteration;
+   * falls back gracefully toward the meridian offset at extreme latitudes.
+   * ====================================================================== */
+  function placidusCuspsTropical(jd, latDeg, lonEastDeg) {
+    const ramc = norm360(gmst(jd) + lonEastDeg);
+    const eps = obliquity(dayNumber(jd));
+    const asc = ascendantTropical(jd, latDeg, lonEastDeg);
+    let mc = norm360(atan2(sin(ramc), cos(ramc) * cos(eps)));
+
+    const cusps = new Array(13);
+    cusps[1] = asc; cusps[10] = mc;
+    cusps[7] = norm360(asc + 180); cusps[4] = norm360(mc + 180);
+
+    function inter(offset, mode) {
+      let ra = ramc + offset;
+      for (let i = 0; i < 25; i++) {
+        const lam = atan2(sin(ra), cos(ra) * cos(eps));
+        const decl = asin(sin(eps) * sin(lam));
+        let x = tan(latDeg) * tan(decl);
+        if (x > 0.99999) x = 0.99999; if (x < -0.99999) x = -0.99999;
+        const ad = asin(x); // ascensional difference
+        let raNew;
+        if (mode === 11) raNew = ramc + (90 + ad) / 3;
+        else if (mode === 12) raNew = ramc + (90 + ad) * 2 / 3;
+        else if (mode === 2) raNew = ramc + 180 - (90 - ad) * 2 / 3;
+        else raNew = ramc + 180 - (90 - ad) / 3; // 3
+        if (Math.abs(norm180(raNew - ra)) < 1e-7) { ra = raNew; break; }
+        ra = raNew;
+      }
+      const lam = atan2(sin(ra), cos(ra) * cos(eps));
+      return norm360(lam);
+    }
+
+    cusps[11] = inter(30, 11);
+    cusps[12] = inter(60, 12);
+    cusps[2] = inter(120, 2);
+    cusps[3] = inter(150, 3);
+    cusps[5] = norm360(cusps[11] + 180);
+    cusps[6] = norm360(cusps[12] + 180);
+    cusps[8] = norm360(cusps[2] + 180);
+    cusps[9] = norm360(cusps[3] + 180);
+
+    // validity check; fall back to Porphyry on NaN (extreme latitude)
+    for (let h = 1; h <= 12; h++) {
+      if (!isFinite(cusps[h])) {
+        const pc = porphyryCusps(jd, latDeg, lonEastDeg).cusps;
+        const out = new Array(13);
+        for (let k = 0; k < 12; k++) out[k + 1] = pc[k];
+        return out;
+      }
+    }
+    return cusps;
+  }
+
+  /* =========================================================================
    * Vedic reference tables
    * ====================================================================== */
 
@@ -602,6 +674,59 @@ const Astro = (function () {
       planets[p].kpHouse = houseFromCusps(planets[p].lon);
     });
 
+    /* ===== KP layer: KP ayanamsa (Old<2000 / New) + Placidus cusps ===== */
+    const kpAyan = kpAyanamsa(jd, input.y);
+    const kpAyanName = input.y < 2000 ? 'KP Old' : 'KP New';
+    const kpPlanets = {};
+    PLANETS.forEach((p) => {
+      const tlon = planets[p].tropical;
+      const sid = norm360(tlon - kpAyan);
+      const sgn = Math.floor(sid / 30);
+      const chain = subLordChain(sid);
+      const nakIdx = chain.nakIdx;
+      kpPlanets[p] = {
+        name: p, lon: sid, sign: sgn, signName: RASHIS[sgn], degInSign: sid - sgn * 30,
+        retro: planets[p].retro, speed: planets[p].speed,
+        nakIdx, nak: NAK[nakIdx].name, nakLord: NAK[nakIdx].lord,
+        pada: Math.floor((sid - nakIdx * NAK_SPAN) / (NAK_SPAN / 4)) + 1,
+        subLord: chain.subLord, subSubLord: chain.subSubLord,
+      };
+    });
+    const kpAscSid = norm360(ascT - kpAyan);
+    const kpAscSign = Math.floor(kpAscSid / 30);
+    const kpAscChain = subLordChain(kpAscSid);
+    const kpAscendant = {
+      name: 'Ascendant', lon: kpAscSid, sign: kpAscSign, signName: RASHIS[kpAscSign],
+      degInSign: kpAscSid - kpAscSign * 30, nak: NAK[kpAscChain.nakIdx].name,
+      nakLord: NAK[kpAscChain.nakIdx].lord, subLord: kpAscChain.subLord, subSubLord: kpAscChain.subSubLord,
+    };
+    const tropCusps = placidusCuspsTropical(jd, input.lat, input.lonEast);
+    const kpCusps = [];
+    for (let h = 1; h <= 12; h++) {
+      const sidc = norm360(tropCusps[h] - kpAyan);
+      const sgn = Math.floor(sidc / 30);
+      const chain = subLordChain(sidc);
+      kpCusps.push({
+        house: h, lon: sidc, sign: sgn, signName: RASHIS[sgn], degInSign: sidc - sgn * 30,
+        nak: chain.nak, nakLord: chain.nakLord, subLord: chain.subLord, subSubLord: chain.subSubLord,
+      });
+    }
+    function kpHouseOf(sid) {
+      for (let h = 0; h < 12; h++) {
+        const start = kpCusps[h].lon;
+        const end = kpCusps[(h + 1) % 12].lon;
+        const span = norm360(end - start);
+        const off = norm360(sid - start);
+        if (off < span) return h + 1;
+      }
+      return 1;
+    }
+    PLANETS.forEach((p) => { kpPlanets[p].kpHouse = kpHouseOf(kpPlanets[p].lon); });
+    const kp = {
+      ayanamsa: kpAyan, ayanamsaName: kpAyanName, houseSystem: 'Placidus',
+      planets: kpPlanets, ascendant: kpAscendant, cusps: kpCusps,
+    };
+
     return {
       input,
       jd,
@@ -609,6 +734,7 @@ const Astro = (function () {
       planets,
       ascendant,
       cusps,
+      kp,
       mc: cuspData.mc,
       moonNakIdx: planets.Moon.nakIdx,
       moonSign: planets.Moon.sign,
@@ -619,7 +745,8 @@ const Astro = (function () {
     DEG, RAD, sin, cos, tan, norm360, norm180,
     julianDay, dayNumber, lahiriAyanamsa, obliquity,
     tropicalLon, sunPos, moonPos, outerPlanetPos, rahuPos,
-    ascendantTropical, gmst, porphyryCusps,
+    ascendantTropical, gmst, porphyryCusps, placidusCuspsTropical,
+    kpNewAyanamsa, kpOldAyanamsa, kpAyanamsa,
     buildChart, subLordChain,
     RASHIS, RASHI_SK, RASHI_LORD, RASHI_ELEMENT, RASHI_QUALITY,
     NAK, NAK_SPAN, DASHA_YEARS, DASHA_ORDER, PLANETS, PLANET_SYM,

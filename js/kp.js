@@ -22,11 +22,11 @@ const KP = (function () {
     const occByHouse = {};
     for (let h = 1; h <= 12; h++) occByHouse[h] = [];
     Astro.PLANETS.forEach((p) => {
-      occByHouse[chart.planets[p].kpHouse].push(p);
+      occByHouse[chart.kp.planets[p].kpHouse].push(p);
     });
     // sign lord of each cusp (house owner)
     const ownerByHouse = {};
-    chart.cusps.forEach((c) => {
+    chart.kp.cusps.forEach((c) => {
       ownerByHouse[c.house] = Astro.RASHI_LORD[c.sign];
     });
     return { occByHouse, ownerByHouse };
@@ -35,7 +35,7 @@ const KP = (function () {
   // houses a given planet "owns" (its signs appear on which cusps)
   function ownedHouses(planet, chart) {
     const res = [];
-    chart.cusps.forEach((c) => {
+    chart.kp.cusps.forEach((c) => {
       if (Astro.RASHI_LORD[c.sign] === planet) res.push(c.house);
     });
     return res;
@@ -43,19 +43,19 @@ const KP = (function () {
 
   // planets located in the nakshatra (star) ruled by `lord`
   function planetsInStarOf(lord, chart) {
-    return Astro.PLANETS.filter((p) => chart.planets[p].nakLord === lord);
+    return Astro.PLANETS.filter((p) => chart.kp.planets[p].nakLord === lord);
   }
 
   // Significator houses for a planet (the houses it signifies in KP)
   function significatorHouses(planet, chart) {
     const houses = new Set();
-    const p = chart.planets[planet];
+    const p = chart.kp.planets[planet];
     // (b) house it occupies
     houses.add(p.kpHouse);
     // (a) it is in the star of the occupant of some house -> signifies that house
     const starLord = p.nakLord;
     // houses occupied by the star lord
-    if (chart.planets[starLord]) houses.add(chart.planets[starLord].kpHouse);
+    if (chart.kp.planets[starLord]) houses.add(chart.kp.planets[starLord].kpHouse);
     // (d) houses it owns
     ownedHouses(planet, chart).forEach((h) => houses.add(h));
     // (c) houses owned by its star lord
@@ -65,9 +65,9 @@ const KP = (function () {
 
   // Strength tier of a planet as significator (star lord placement dominates in KP)
   function significatorStrength(planet, chart, targetHouses) {
-    const p = chart.planets[planet];
+    const p = chart.kp.planets[planet];
     const starLord = p.nakLord;
-    const starHouse = chart.planets[starLord] ? chart.planets[starLord].kpHouse : null;
+    const starHouse = chart.kp.planets[starLord] ? chart.kp.planets[starLord].kpHouse : null;
     let tier = 0; // higher = stronger
     if (targetHouses.includes(starHouse)) tier += 3; // in star of occupant of target house — strongest
     if (targetHouses.includes(p.kpHouse)) tier += 2; // occupant of target house
@@ -79,7 +79,7 @@ const KP = (function () {
   }
 
   function cuspSubLord(houseNum, chart) {
-    return chart.cusps[houseNum - 1];
+    return chart.kp.cusps[houseNum - 1];
   }
 
   // Is marriage promised? sub-lord of 7th cusp must signify 2/7/11
