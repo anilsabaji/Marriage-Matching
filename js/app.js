@@ -27,6 +27,11 @@
     const d = Math.floor(deg); const m = Math.floor((deg - d) * 60);
     return `${d}°${String(m).padStart(2, '0')}'`;
   }
+  function nowDMY() {
+    const d = new Date();
+    const mon = Dasha.MONTHS ? Dasha.MONTHS[d.getMonth()] : (d.getMonth() + 1);
+    return `${d.getDate()} ${mon} ${d.getFullYear()}`;
+  }
 
   /* ---------------- tabs ---------------- */
   function setTab(name) {
@@ -182,7 +187,8 @@
   }
   function header(chart) {
     const m = chart.meta;
-    return `<div class="muted small">${esc(m.name)} — ${m.d}/${m.m}/${m.y}, ${String(m.hour).padStart(2,'0')}:${String(m.min).padStart(2,'0')} (TZ ${m.tzOffsetHours}h), ${esc(m.place)} [${fix(m.lat)}, ${fix(m.lonEast)}]</div>`;
+    const mon = (typeof Dasha !== 'undefined' && Dasha.MONTHS) ? Dasha.MONTHS[m.m - 1] : m.m;
+    return `<div class="muted small">${esc(m.name)} — ${m.d} ${mon} ${m.y}, ${String(m.hour).padStart(2,'0')}:${String(m.min).padStart(2,'0')} (TZ ${m.tzOffsetHours}h), ${esc(m.place)} [${fix(m.lat)}, ${fix(m.lonEast)}]</div>`;
   }
   function renderCharts() {
     const b = state.boy, g = state.girl;
@@ -586,12 +592,38 @@
   }
 
   /* ---------------- Forecast ---------------- */
+  function updateForecastTimeframe() {
+    const r = state.results;
+    if (!r) return;
+    const ds = $('fcStart') ? $('fcStart').value : '';
+    let yrs = $('fcYears') ? parseInt($('fcYears').value, 10) : 20;
+    if (!yrs || yrs < 1) yrs = 20;
+    yrs = Math.min(60, yrs);
+    let fromJd = state.fromJd;
+    if (ds) {
+      const parts = ds.split('-').map(Number);
+      if (parts.length === 3 && parts[0]) fromJd = Astro.julianDay(parts[0], parts[1], parts[2], 0);
+    }
+    state.fcFromJd = fromJd;
+    state.fcYears = yrs;
+    try {
+      r.strengthDual = Timeline.strengthSeriesDual(state.boy, state.girl, fromJd, yrs, 3);
+      r.forecast = Timeline.relationshipForecast(state.boy, state.girl, fromJd, yrs);
+    } catch (e) { console.error('forecast recompute error', e); }
+    renderForecast();
+  }
+
   function renderForecast() {
     const r = state.results;
     const dual = r.strengthDual ? r.strengthDual.series : [];
     const avg = (k) => dual.length ? Math.round(dual.reduce((a, s) => a + s[k], 0) / dual.length) : 0;
     const kpSpan = (v) => `<span class="kp-val">${v}</span>`;
     const parSpan = (v) => `<span class="par-val">${v}</span>`;
+    const fromJd = state.fcFromJd || state.fromJd;
+    const yrs = state.fcYears || 20;
+    const startISO = Dasha.fmtISO(fromJd);
+    const todayISO = Dasha.fmtISO(state.fromJd);
+    const isDefault = startISO === todayISO && yrs === 20;
 
     let rows = '';
     r.forecast.forEach((f) => {
@@ -625,8 +657,20 @@
     };
 
     $('tab-forecast').innerHTML = `
+      <div class="card no-print">
+        <h2>Forecast Timeframe (Backtesting)</h2>
+        <p class="small muted">Default is <b>today + 20 years</b>. To backtest, pick a different start date (e.g., a past date)
+          and the number of years, then click Update.</p>
+        <div class="row-3" style="max-width:560px;align-items:end">
+          <div><label>Start date</label><input type="date" id="fcStart" value="${startISO}" /></div>
+          <div><label>Years</label><input type="number" id="fcYears" min="1" max="60" value="${yrs}" /></div>
+          <div><button class="btn" id="fcUpdate" type="button">Update Forecast</button></div>
+        </div>
+        <div class="small" style="margin-top:6px">${isDefault ? '<span class="chip good">Default timeframe</span>' : `<span class="chip mid">Custom / backtest</span> <span class="muted">from ${Dasha.fmtDMY(fromJd)} for ${yrs} years</span>`}
+          ${!isDefault ? ' &nbsp;<span class="preset-link" id="fcReset">Reset to default</span>' : ''}</div>
+      </div>
       <div class="card">
-        <h2>Relationship Strength Over 20 Years — Commitment Graph</h2>
+        <h2>Relationship Strength Over ${yrs} Years — Commitment Graph</h2>
         <p class="small muted">Time runs left → right along the centre line. <b style="color:#4dc9ff">${esc(state.boy.meta.name)} (Groom)</b>'s
           commitment is drawn <b>above</b> the centre line; <b style="color:#ff7eb3">${esc(state.girl.meta.name)} (Bride)</b>'s is drawn <b>below</b>.
           Each partner has <b>two values in two colours</b> — <span class="kp-val">KP significators</span> and
@@ -636,12 +680,12 @@
         ${typeof ChartDraw !== 'undefined' && dual.length ? ChartDraw.relationshipPipeDual(dual, { boyName: state.boy.meta.name, girlName: state.girl.meta.name }) : ''}
         <div class="grid-2" style="margin-top:10px">
           <div class="card" style="margin:0">
-            <h3>${esc(state.boy.meta.name)} (Groom) — 20-yr average</h3>
+            <h3>${esc(state.boy.meta.name)} (Groom) — ${yrs}-yr average</h3>
             <div class="kv"><span>KP commitment</span><span>${kpSpan(avg('boyKP'))}/100</span></div>
             <div class="kv"><span>Parāśara commitment</span><span>${parSpan(avg('boyPar'))}/100</span></div>
           </div>
           <div class="card" style="margin:0">
-            <h3>${esc(state.girl.meta.name)} (Bride) — 20-yr average</h3>
+            <h3>${esc(state.girl.meta.name)} (Bride) — ${yrs}-yr average</h3>
             <div class="kv"><span>KP commitment</span><span>${kpSpan(avg('girlKP'))}/100</span></div>
             <div class="kv"><span>Parāśara commitment</span><span>${parSpan(avg('girlPar'))}/100</span></div>
           </div>
@@ -654,7 +698,7 @@
         </div>
       </div>
       <div class="card">
-        <h2>20-Year Relationship Strength &amp; Weakness Forecast</h2>
+        <h2>${yrs}-Year Relationship Strength &amp; Weakness Forecast</h2>
         <p class="small muted">Period-by-period (Mahādaśā / Antardaśā / Pratyantardaśā) outlook. Each cell shows two
           strength values: <span class="kp-val">KP</span> / <span class="par-val">Parāśara</span> (0–100), derived from the
           houses the running dasha lords signify, scaled by planetary strength.</p>
@@ -687,6 +731,17 @@
           aspects, strong 7th lord, Neecha Bhanga, or favourable D9. Treat high-risk windows as periods needing conscious
           effort, counselling and patience, and always confirm with a qualified astrologer.</div>
       </div>`;
+
+    const upd = $('fcUpdate');
+    if (upd) upd.addEventListener('click', updateForecastTimeframe);
+    const rst = $('fcReset');
+    if (rst) rst.addEventListener('click', () => {
+      state.fcFromJd = state.fromJd; state.fcYears = 20;
+      const r2 = state.results;
+      r2.strengthDual = Timeline.strengthSeriesDual(state.boy, state.girl, state.fromJd, 20, 3);
+      r2.forecast = Timeline.relationshipForecast(state.boy, state.girl, state.fromJd, 20);
+      renderForecast();
+    });
   }
 
   /* ---------------- Transit ---------------- */
@@ -879,7 +934,7 @@
     node.innerHTML = `
       <div class="card report-cover">
         <h2 style="text-align:center">Marriage Compatibility Report</h2>
-        <p class="small muted" style="text-align:center">${esc(b.meta.name)} &amp; ${esc(g.meta.name)} — generated ${new Date().toLocaleString()}</p>
+        <p class="small muted" style="text-align:center">${esc(b.meta.name)} &amp; ${esc(g.meta.name)} — generated ${nowDMY()}</p>
         <div style="text-align:center;margin:10px 0">
           <span class="big-score">${s}<small>/100</small></span><br/>${chip(ov.label, ov.cls)}
         </div>
@@ -913,7 +968,7 @@
       ${section('9 · Health Compatibility', 'health')}
       ${section('10 · Sarvashtakavarga (SAV)', 'sarvashtaka')}
 
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.2</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.3</p>
       <p class="dev-credit footer-credit">Developed by <b>Dr. Anil Sabaji</b> &nbsp;•&nbsp; Email: anilsabaji@gmail.com</p>
     `;
   }
@@ -973,7 +1028,7 @@
 
     const boyName = esc(state.boy.meta.name);
     const girlName = esc(state.girl.meta.name);
-    const dateStr = new Date().toLocaleString();
+    const dateStr = nowDMY();
     const fileName = `Marriage-Report-${state.boy.meta.name}-${state.girl.meta.name}.html`.replace(/\s+/g, '_');
 
     const doc = `<!DOCTYPE html>
@@ -1000,7 +1055,7 @@ body { padding: 24px; max-width: 1000px; margin: 0 auto; }
 <div class="report-meta">Generated ${esc(dateStr)} — Vedic Marriage Matching Module (BPHS &amp; KP)</div>
 <div id="report-content">${reportHtml}</div>
 <p class="footer-note" style="text-align:center;margin-top:24px;opacity:.7;font-size:11.5px">
-  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.2
+  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.3
 </p>
 <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>
 </body>
