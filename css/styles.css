@@ -504,3 +504,60 @@ td.num, th.num { text-align: right; }
 .sep-flag { color: #ff4d4d; font-weight: 700; cursor: help; }
 .sep-row td { box-shadow: inset 3px 0 0 #ff4d4d; }
 
+
+
+/* =============================================================================
+ * Print fixes — force a light, visible theme so printing never yields blank
+ * pages (the dark screen theme would print as white-text-on-white). Also,
+ * when triggered from the Report tab's button, print ONLY the report.
+ * ========================================================================== */
+@media print {
+  /* universal dark-on-white text so nothing is invisible */
+  body, body * { color: #1a1a1a !important; }
+  .muted, .small.muted, .footer-note, .report-meta { color: #555 !important; }
+
+  .card, .bhava-col, .bhava-result, .bhava-what-indicates,
+  .chart-box, fieldset, .callout {
+    background: #fff !important; border-color: #ccc !important; box-shadow: none !important;
+  }
+  .card::before, fieldset::after { display: none !important; }
+
+  h1, h2, h3, .big-score, .card h2, .manual h2 {
+    -webkit-text-fill-color: initial !important; background: none !important; color: #5b3fb0 !important;
+  }
+  .report-section-title {
+    background: #5b3fb0 !important; color: #fff !important; -webkit-text-fill-color: #fff !important;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+
+  th { color: #333 !important; background: #f0f0f0 !important; }
+  td, th { border-color: #ccc !important; }
+  .chip { border: 1px solid #999 !important; background: #f3f3f3 !important; }
+  .chip.good { color: #137a4a !important; }
+  .chip.bad { color: #9d2b24 !important; }
+  .chip.mid { color: #8a6d10 !important; }
+  .pass { color: #137a4a !important; }
+  .fail { color: #9d2b24 !important; }
+  .kp-val { color: #b87a00 !important; }
+  .par-val { color: #1d7a4d !important; }
+  .gauge .bar { background: #eee !important; border-color: #bbb !important; }
+  .gauge .fill { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .bhava-sign-badge { background: #5b3fb0 !important; color: #fff !important; -webkit-text-fill-color: #fff !important; }
+
+  /* SVG charts: dark text on white */
+  .chart-svg .chart-planet { fill: #111 !important; }
+  .chart-svg .chart-sign { fill: #0a7a52 !important; }
+  .chart-svg .chart-title { fill: #5b3fb0 !important; }
+  .pipe-svg { background: #f7f7fb !important; }
+  .pipe-svg .pipe-axis, .pipe-svg .pipe-axis-sub { fill: #555 !important; }
+  .pipe-svg .boy-side { fill: #1f7ab8 !important; }
+  .pipe-svg .girl-side { fill: #b83a72 !important; }
+
+  /* When printing from the Report button: show ONLY the report */
+  body.print-report header.app-header,
+  body.print-report .tabs,
+  body.print-report .footer-note,
+  body.print-report .tab-panel:not(#tab-report) { display: none !important; }
+  body.print-report #tab-report { display: block !important; }
+  body.print-report .no-print { display: none !important; }
+}
