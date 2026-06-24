@@ -181,13 +181,31 @@ const Timeline = (function () {
   }
 
   // Commitment (KP & Parāśara) at a given jd, scaled by planetary strength.
-  function commitmentAt(chart, parW, kpW, strengthMap, jd, mdList) {
+  // `sep` (optional) is the Separation.analyze() result for this chart; when a
+  // separative dasha lord is running AND transits are adverse, an extra penalty
+  // is applied (more weightage to a triggered separation/divorce/widowhood).
+  function commitmentAt(chart, parW, kpW, strengthMap, jd, mdList, sep) {
     const r = Dasha.runningAt(chart, jd, mdList);
-    if (!r || !r.ad) return { kp: 5, par: 5, run: r };
+    if (!r || !r.ad) return { kp: 5, par: 5, run: r, sepPenalty: 0, triggered: false };
     const g = (W, lord, wt) => (W[lord] || 0) * wt * strengthMult(strengthMap, lord);
-    const par = g(parW, r.md.lord, 0.5) + g(parW, r.ad.lord, 0.35) + (r.pd ? g(parW, r.pd.lord, 0.15) : 0);
-    const kp = g(kpW, r.md.lord, 0.5) + g(kpW, r.ad.lord, 0.35) + (r.pd ? g(kpW, r.pd.lord, 0.15) : 0);
-    return { kp: clampDual(kp), par: clampDual(par), run: r };
+    let par = g(parW, r.md.lord, 0.5) + g(parW, r.ad.lord, 0.35) + (r.pd ? g(parW, r.pd.lord, 0.15) : 0);
+    let kp = g(kpW, r.md.lord, 0.5) + g(kpW, r.ad.lord, 0.35) + (r.pd ? g(kpW, r.pd.lord, 0.15) : 0);
+
+    let sepPen = 0; let triggered = false;
+    if (sep) {
+      const sp = sep.separativePlanets || {};
+      // dasha activation of separative significators (MD/AD/PD weighted)
+      const act = (sp[r.md.lord] || 0) * 0.5 + (sp[r.ad.lord] || 0) * 0.35 + (r.pd ? (sp[r.pd.lord] || 0) * 0.15 : 0);
+      // transit adversity (Sade Sati, Saturn/Rahu/Mars on 7th etc.)
+      const ev = Transit.evaluate(chart, jd);
+      const adverse = Math.max(0, -ev.score);
+      // structural baseline drag from the promised risk
+      const baseDrag = (sep.overallRisk / 100) * 0.9;
+      let trig = act;
+      if (trig > 0 && adverse > 0) { trig *= (1 + Math.min(1.6, adverse * 0.5)); triggered = true; } // MORE weightage when dasha + transit both fire
+      sepPen = baseDrag * 0.5 + trig * 1.5;
+    }
+    return { kp: clampDual(kp - sepPen), par: clampDual(par - sepPen), run: r, sepPenalty: Math.round(sepPen * 100) / 100, triggered };
   }
 
   // Dual-method commitment series for both partners over `years`.
@@ -197,21 +215,25 @@ const Timeline = (function () {
     const gPar = parasharaWeights(girlChart, 'female'), gKp = kpWeights(girlChart, 'female');
     const bSM = (typeof PlanetStrength !== 'undefined') ? PlanetStrength.map(boyChart) : {};
     const gSM = (typeof PlanetStrength !== 'undefined') ? PlanetStrength.map(girlChart) : {};
+    const bSep = (typeof Separation !== 'undefined') ? Separation.analyze(boyChart, 'male') : null;
+    const gSep = (typeof Separation !== 'undefined') ? Separation.analyze(girlChart, 'female') : null;
     const bMd = Dasha.mahadashas(boyChart, years + 130);
     const gMd = Dasha.mahadashas(girlChart, years + 130);
     const series = [];
     const totalM = years * 12; const MONTH = 30.436875;
     for (let m = 0; m <= totalM; m += stepMonths) {
       const jd = fromJd + m * MONTH;
-      const b = commitmentAt(boyChart, bPar, bKp, bSM, jd, bMd);
-      const g = commitmentAt(girlChart, gPar, gKp, gSM, jd, gMd);
+      const b = commitmentAt(boyChart, bPar, bKp, bSM, jd, bMd, bSep);
+      const g = commitmentAt(girlChart, gPar, gKp, gSM, jd, gMd, gSep);
       const d = Dasha.jdToDate(jd);
       series.push({
         jd, m, year: d.getUTCFullYear(), label: Dasha.fmtYM(jd),
         boyKP: b.kp, boyPar: b.par, girlKP: g.kp, girlPar: g.par,
+        sepBoy: b.sepPenalty, sepGirl: g.sepPenalty,
+        sepTrig: !!(b.triggered || g.triggered),
       });
     }
-    return { series, strength: { boy: bSM, girl: gSM },
+    return { series, strength: { boy: bSM, girl: gSM }, separation: { boy: bSep, girl: gSep },
       weights: { boyPar: bPar, boyKp: bKp, girlPar: gPar, girlKp: gKp } };
   }
 
@@ -267,6 +289,8 @@ const Timeline = (function () {
     const gPar = parasharaWeights(girlChart, 'female'), gKp = kpWeights(girlChart, 'female');
     const bSM = (typeof PlanetStrength !== 'undefined') ? PlanetStrength.map(boyChart) : {};
     const gSM = (typeof PlanetStrength !== 'undefined') ? PlanetStrength.map(girlChart) : {};
+    const bSep = (typeof Separation !== 'undefined') ? Separation.analyze(boyChart, 'male') : null;
+    const gSep = (typeof Separation !== 'undefined') ? Separation.analyze(girlChart, 'female') : null;
 
     // Drive the timeline off the BOY's AD periods (a stable cadence), and for
     // each, sample mid-point for both partners + transits.
@@ -278,8 +302,8 @@ const Timeline = (function () {
       const mid = (Math.max(p.startJd, fromJd) + p.endJd) / 2;
       const bScore = clamp(scoreAt(boyChart, 'male', bmp, bsp, mid));
       const gScore = clamp(scoreAt(girlChart, 'female', gmp, gsp, mid));
-      const bC = commitmentAt(boyChart, bPar, bKp, bSM, mid, bMd);
-      const gC = commitmentAt(girlChart, gPar, gKp, gSM, mid, gMd);
+      const bC = commitmentAt(boyChart, bPar, bKp, bSM, mid, bMd, bSep);
+      const gC = commitmentAt(girlChart, gPar, gKp, gSM, mid, gMd, gSep);
       const bRun = Dasha.runningAt(boyChart, mid, bMd);
       const gRun = Dasha.runningAt(girlChart, mid, gMd);
       const bT = Transit.evaluate(boyChart, mid);
@@ -299,6 +323,8 @@ const Timeline = (function () {
         boyKP: bC.kp, boyPar: bC.par, girlKP: gC.kp, girlPar: gC.par,
         combinedKP: Math.round((bC.kp + gC.kp) / 2),
         combinedPar: Math.round((bC.par + gC.par) / 2),
+        sepTrig: !!(bC.triggered || gC.triggered),
+        sepPenalty: Math.round(Math.max(bC.sepPenalty, gC.sepPenalty) * 100) / 100,
       });
     });
     return rows;

@@ -500,3 +500,7 @@ td.num, th.num { text-align: right; }
 .kp-val { color: #f5b301; font-weight: 700; }
 .par-val { color: #2bbf6a; font-weight: 700; }
 
+/* Separation / divorce / widowhood flags */
+.sep-flag { color: #ff4d4d; font-weight: 700; cursor: help; }
+.sep-row td { box-shadow: inset 3px 0 0 #ff4d4d; }
+
