@@ -913,7 +913,7 @@
       ${section('9 · Health Compatibility', 'health')}
       ${section('10 · Sarvashtakavarga (SAV)', 'sarvashtaka')}
 
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.1</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.2</p>
       <p class="dev-credit footer-credit">Developed by <b>Dr. Anil Sabaji</b> &nbsp;•&nbsp; Email: anilsabaji@gmail.com</p>
     `;
   }
@@ -929,7 +929,17 @@
 
   $('printReport').addEventListener('click', () => {
     if (!state.results) { alert('Please generate a report first (Tab 1).'); return; }
-    window.print();
+    const el = $('report-content');
+    document.body.classList.add('print-report');
+    el.classList.add('pdf-render');
+    const cleanup = () => {
+      document.body.classList.remove('print-report');
+      el.classList.remove('pdf-render');
+      window.removeEventListener('afterprint', cleanup);
+    };
+    window.addEventListener('afterprint', cleanup);
+    setTimeout(() => { window.print(); }, 60);
+    setTimeout(cleanup, 4000);
   });
   $('downloadPdf').addEventListener('click', () => {
     if (!state.results) { alert('Please generate a report first (Tab 1).'); return; }
@@ -990,7 +1000,7 @@ body { padding: 24px; max-width: 1000px; margin: 0 auto; }
 <div class="report-meta">Generated ${esc(dateStr)} — Vedic Marriage Matching Module (BPHS &amp; KP)</div>
 <div id="report-content">${reportHtml}</div>
 <p class="footer-note" style="text-align:center;margin-top:24px;opacity:.7;font-size:11.5px">
-  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.1
+  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.2
 </p>
 <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>
 </body>
