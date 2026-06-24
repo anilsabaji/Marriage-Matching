@@ -152,11 +152,22 @@ const Dasha = (function () {
     const d = jdToDate(jd);
     return d.toLocaleString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
   }
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  // Date-Month-Year, e.g. "24 Jun 2026"
+  function fmtDMY(jd) {
+    const d = jdToDate(jd);
+    return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+  }
+  // ISO yyyy-mm-dd (needed for <input type="date"> values)
+  function fmtISO(jd) {
+    const d = jdToDate(jd);
+    return d.toISOString().slice(0, 10);
+  }
 
   return {
     YEAR_DAYS, order, jdToDate, addDays, birthBalance,
     mahadashas, antardashas, pratyantardashas, runningAt, expandWindow,
-    fmt, fmtYM,
+    fmt, fmtYM, fmtDMY, fmtISO, MONTHS,
   };
 })();
 
