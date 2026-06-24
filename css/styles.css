@@ -561,3 +561,46 @@ td.num, th.num { text-align: right; }
   body.print-report #tab-report { display: block !important; }
   body.print-report .no-print { display: none !important; }
 }
+
+
+/* =============================================================================
+ * PDF / print fit-to-page: keep all content within the page width, centered,
+ * with wrapping tables and scaled charts (applies during Download PDF and
+ * Open-print-dialog, both of which add .pdf-render to #report-content).
+ * ========================================================================== */
+.pdf-render { width: 100% !important; max-width: 100% !important; margin: 0 auto !important; box-sizing: border-box; }
+.pdf-render * { box-sizing: border-box; }
+.pdf-render .card,
+.pdf-render .report-section,
+.pdf-render .bhava-house-card {
+  overflow: visible !important;
+  max-width: 100% !important;
+  margin-left: auto !important; margin-right: auto !important;
+  padding: 10px 12px !important;
+}
+/* tables wrap and fit the page width */
+.pdf-render table { width: 100% !important; max-width: 100% !important; table-layout: fixed; font-size: 8.5px !important; }
+.pdf-render th, .pdf-render td {
+  word-break: break-word; overflow-wrap: anywhere; white-space: normal !important;
+  padding: 3px 4px !important;
+}
+.pdf-render .bav-table { font-size: 7.4px !important; }
+.pdf-render .bav-table th, .pdf-render .bav-table td { padding: 2px 2px !important; }
+/* charts & graphs scale to the available width */
+.pdf-render svg, .pdf-render .chart-svg, .pdf-render .pipe-svg { max-width: 100% !important; height: auto !important; }
+.pdf-render .chart-triple { grid-template-columns: 1fr 1fr 1fr !important; gap: 6px !important; }
+.pdf-render .grid-2 { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
+.pdf-render .bhava-compare-grid { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
+.pdf-render .gauge .bar { max-width: 100%; }
+
+@media print {
+  /* same constraints for the native print path */
+  html, body { width: 100% !important; margin: 0 !important; padding: 0 !important; }
+  #report-content { width: 100% !important; max-width: 100% !important; margin: 0 auto !important; }
+  .card, .report-section, .bhava-house-card { overflow: visible !important; max-width: 100% !important; }
+  table { width: 100% !important; max-width: 100% !important; table-layout: fixed; font-size: 8.5px !important; }
+  th, td { word-break: break-word; overflow-wrap: anywhere; white-space: normal !important; padding: 3px 4px !important; }
+  svg, .chart-svg, .pipe-svg { max-width: 100% !important; height: auto !important; }
+  .bav-table { font-size: 7.4px !important; }
+  @page { size: A4 portrait; margin: 10mm; }
+}
