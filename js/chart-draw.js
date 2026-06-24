@@ -173,7 +173,7 @@ const ChartDraw = (function () {
     // occupying its natural position and put house numbers + planets there.
     // Simpler approach: use the cusp sign as the cell, place planets by kpHouse.
 
-    const cusps = chart.cusps;
+    const cusps = chart.kp.cusps;
     cusps.forEach((c, idx) => {
       const h = idx + 1;
       // Mark house number in the cell of the cusp sign
@@ -186,7 +186,7 @@ const ChartDraw = (function () {
 
     // Planets by kpHouse -> cusp sign of that house
     Astro.PLANETS.forEach((p) => {
-      const pl = chart.planets[p];
+      const pl = chart.kp.planets[p];
       const houseIdx = pl.kpHouse - 1;
       const cuspSign = cusps[houseIdx].sign;
       let lbl = PLANET_ABBR[p] || p.substring(0, 2);
@@ -194,7 +194,7 @@ const ChartDraw = (function () {
       signContents[cuspSign].push(lbl);
     });
 
-    return svgChart(label || 'KP (Placidus)', signContents, chart.ascendant.sign);
+    return svgChart(label || 'KP (Placidus)', signContents, chart.kp.ascendant.sign);
   }
 
   /* ======================================================================
