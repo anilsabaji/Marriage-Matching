@@ -551,8 +551,9 @@
 
     let rows = '';
     r.forecast.forEach((f) => {
-      rows += `<tr class="band-${f.band.cls}">
-        <td>${f.start} – ${f.end}</td>
+      const trig = f.sepTrig ? ' <span class="sep-flag" title="Separation/divorce/widowhood trigger: separative dasha + adverse transit">⚠</span>' : '';
+      rows += `<tr class="band-${f.band.cls}${f.sepTrig ? ' sep-row' : ''}">
+        <td>${f.start} – ${f.end}${trig}</td>
         <td class="small">${f.boyDasha}</td>
         <td class="small">${f.girlDasha}</td>
         <td class="num">${kpSpan(f.boyKP != null ? f.boyKP : '-')}/${parSpan(f.boyPar != null ? f.boyPar : '-')}</td>
@@ -562,6 +563,22 @@
         <td class="small muted">${esc(f.transitNote)}</td>
       </tr>`;
     });
+
+    const sepData = r.strengthDual && r.strengthDual.separation ? r.strengthDual.separation : null;
+    const sepCard = (name, s) => {
+      if (!s) return '';
+      const facts = (arr, title) => arr.length ? `<p class="small" style="margin:4px 0"><b>${title}:</b></p>${arr.map((f) => `<p class="small bhava-char-item">• ${esc(f)}</p>`).join('')}` : `<p class="small muted">${title}: no significant indication.</p>`;
+      return `<div class="card" style="margin:0">
+        <h3>${esc(name)} — Separation / Divorce / Widowhood Promise</h3>
+        <div style="margin:4px 0 8px">${chip(s.verdict.label, s.verdict.cls)} <span class="muted small">overall risk ${s.overallRisk}/100</span></div>
+        ${gaugePct('Separation risk', s.separation)}
+        ${gaugePct('Divorce risk', s.divorce)}
+        ${gaugePct('Widowhood / spouse-longevity caution', s.widowhood)}
+        ${facts(s.d1Factors, 'D1 (Rāśi) indicators')}
+        ${facts(s.d9Factors, 'D9 (Navāṁśa) indicators')}
+        ${facts(s.kpFactors, 'KP indicators')}
+      </div>`;
+    };
 
     $('tab-forecast').innerHTML = `
       <div class="card">
@@ -611,7 +628,21 @@
         <i>nakshatra/sub-lord significators</i> of houses 2-7-11 (vs 1-6-10-12); the <span class="par-val">Parāśara</span> value reads its
         <i>house lordship &amp; occupancy</i> of 7-2-11-5 (vs 6-8-12). Both are multiplied by the planet's computed strength
         (Cheṣṭā/retrograde, speed, declination, exaltation, Neecha-Bhanga-aware debilitation, combustion). Where the two lines
-        diverge, the two systems disagree on that period's promise — a cue for closer manual judgement.</div>`;
+        diverge, the two systems disagree on that period's promise — a cue for closer manual judgement.</div>
+
+      <div class="card">
+        <h2>Promise of Separation / Divorce / Widowhood</h2>
+        <p class="small muted">Structural risk read from the <b>D1, D9 and KP</b> charts. This <b>lowers the strength index more
+          sharply</b> in periods where a separative dasha lord runs <i>and</i> transits simultaneously trigger it — shown as
+          <span style="color:#ff4d4d;font-weight:700">red trigger windows</span> on the graph above and a ⚠ on the affected rows.</p>
+        <div class="grid-2">
+          ${sepCard(state.boy.meta.name + ' (Groom)', sepData ? sepData.boy : null)}
+          ${sepCard(state.girl.meta.name + ' (Bride)', sepData ? sepData.girl : null)}
+        </div>
+        <div class="callout small">These are classical <i>indications</i>, not certainties — many are mitigated by benefic
+          aspects, strong 7th lord, Neecha Bhanga, or favourable D9. Treat high-risk windows as periods needing conscious
+          effort, counselling and patience, and always confirm with a qualified astrologer.</div>
+      </div>`;
   }
 
   /* ---------------- Transit ---------------- */
@@ -837,7 +868,7 @@
       ${section('9 · Health Compatibility', 'health')}
       ${section('10 · Sarvashtakavarga (SAV)', 'sarvashtaka')}
 
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v4.9</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.0</p>
       <p class="dev-credit footer-credit">Developed by <b>Dr. Anil Sabaji</b> &nbsp;•&nbsp; Email: anilsabaji@gmail.com</p>
     `;
   }
@@ -914,7 +945,7 @@ body { padding: 24px; max-width: 1000px; margin: 0 auto; }
 <div class="report-meta">Generated ${esc(dateStr)} — Vedic Marriage Matching Module (BPHS &amp; KP)</div>
 <div id="report-content">${reportHtml}</div>
 <p class="footer-note" style="text-align:center;margin-top:24px;opacity:.7;font-size:11.5px">
-  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v4.9
+  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.0
 </p>
 <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>
 </body>

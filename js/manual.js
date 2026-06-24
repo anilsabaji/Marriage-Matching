@@ -131,6 +131,19 @@ const Manual = (function () {
       as lines on the graph; divergence between them flags periods where the two systems
       disagree.</p>
 
+      <h3>8b. Separation / Divorce / Widowhood Promise (<code>separation.js</code>)</h3>
+      <p>This promise is read from three views: <b>D1</b> (7th lord in
+      dusthāna, malefics in the 7th/2nd, Maṅgala dosha, affliction of the Venus/Jupiter
+      kāraka, 8th-from-7th affliction), <b>D9</b> (malefics in the navāṁśa 7th, Venus
+      navāṁśa dignity) and <b>KP</b> (7th cusp sub-lord signifying 6/12 = separation, or
+      1/10 = against union; planets that are KP significators of 6/8/12). It yields
+      separation, divorce and widowhood risk sub-scores and a weighted map of
+      "separative planets." In the 20-year forecast the relationship strength is
+      <b>reduced more sharply</b> when one of these separative planets runs in the
+      Mahā/Antar/Pratyantar daśā <i>and</i> transits are simultaneously adverse
+      (Sade Sati, Saturn/Rahu/Mars on the 7th, etc.) — these "trigger windows" are
+      marked red on the commitment graph and flagged with ⚠ in the period table.</p>
+
       <h3>9. Health Compatibility Screener (<code>health.js</code>)</h3>
       <p>For each partner the screener evaluates the Lagna lord (vitality), the 6th
       (immunity/acute disease), the 8th (chronic/longevity), the 12th (drains) and the

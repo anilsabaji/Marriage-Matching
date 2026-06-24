@@ -363,6 +363,17 @@ const ChartDraw = (function () {
     svg += `<polyline points="${line('girlKP', 'down')}" fill="none" stroke="${KPc}" stroke-width="2" stroke-linejoin="round"/>`;
     // centre time line
     svg += `<line x1="${padL}" y1="${cy}" x2="${padL + plotW}" y2="${cy}" stroke="#e7e9ee" stroke-width="1.5"/>`;
+    // separation/divorce/widowhood trigger windows (red) on the centre line
+    let runStart = null;
+    for (let i = 0; i < n; i++) {
+      const hot = series[i].sepTrig || (((series[i].sepBoy || 0) + (series[i].sepGirl || 0)) / 2 > 1.2);
+      if (hot && runStart === null) runStart = i;
+      if ((!hot || i === n - 1) && runStart !== null) {
+        const x1 = x(runStart), x2 = x(hot ? i : i - 1);
+        svg += `<rect x="${x1.toFixed(1)}" y="${(cy - 3.5).toFixed(1)}" width="${Math.max(2.5, x2 - x1).toFixed(1)}" height="7" rx="2" fill="#ff4d4d" opacity="0.85"><title>Separation / divorce / widowhood trigger window</title></rect>`;
+        runStart = null;
+      }
+    }
     // side labels
     svg += `<text x="${padL - 8}" y="${(padT + 12).toFixed(1)}" text-anchor="end" class="pipe-side boy-side">${boyName} ▲</text>`;
     svg += `<text x="${padL - 8}" y="${(padT + plotH).toFixed(1)}" text-anchor="end" class="pipe-side girl-side">${girlName} ▼</text>`;
@@ -370,6 +381,7 @@ const ChartDraw = (function () {
     // in-graph legend
     svg += `<rect x="${padL + 4}" y="${padT - 4}" width="11" height="11" rx="2" fill="${KPc}"/><text x="${padL + 19}" y="${padT + 5}" class="pipe-axis">KP</text>`;
     svg += `<rect x="${padL + 52}" y="${padT - 4}" width="11" height="11" rx="2" fill="${PARc}"/><text x="${padL + 67}" y="${padT + 5}" class="pipe-axis">Parāśara</text>`;
+    svg += `<rect x="${padL + 138}" y="${padT - 4}" width="11" height="11" rx="2" fill="#ff4d4d"/><text x="${padL + 153}" y="${padT + 5}" class="pipe-axis">Separation trigger</text>`;
     svg += '</svg>';
     return svg;
   }
