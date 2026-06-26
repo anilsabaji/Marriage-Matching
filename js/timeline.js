@@ -88,6 +88,47 @@ const Timeline = (function () {
     return { mp, sp, scored, nearest, topByScore: scored.slice(0, 6) };
   }
 
+  /* ====================================================================
+   * KP-system marriage timing.
+   * In KP, marriage fructifies in the conjoined period (Daśā–Bhukti–Antara)
+   * of planets that are significators of houses 2, 7 and 11. The Antara (PD)
+   * and Bhukti (AD) lords must be marriage significators; the Daśā (MD) lord
+   * adds weight. Transit agreement (Jupiter/Sun activating the 7th) refines it.
+   * ================================================================== */
+  function kpMarriageWindow(chart, fromJd, years) {
+    years = years || 20;
+    const targets = [2, 7, 11];
+    const sigStrength = {};
+    Astro.PLANETS.forEach((p) => { sigStrength[p] = (function () { try { return KP.significatorStrength(p, chart, targets); } catch (e) { return 0; } })(); });
+    const { periods } = Dasha.expandWindow(chart, fromJd, years);
+    const wins = [];
+    periods.forEach((p) => {
+      (p.pds || []).forEach((pd) => {
+        const sMd = sigStrength[p.md] || 0, sAd = sigStrength[p.lord] || 0, sPd = sigStrength[pd.lord] || 0;
+        if (sAd <= 0 && sPd <= 0) return; // neither Bhukti nor Antara signifies marriage → skip
+        const mid = (Math.max(pd.startJd, fromJd) + pd.endJd) / 2;
+        const allSig = sMd > 0 && sAd > 0 && sPd > 0;
+        const dba = sMd * 1.0 + sAd * 1.8 + sPd * 1.4;
+        let tr = 0; try { tr = Transit.evaluate(chart, mid).score; } catch (e) { tr = 0; }
+        const total = dba * 3 + tr + (allSig ? 4 : 0);
+        wins.push({
+          startJd: Math.max(pd.startJd, fromJd), endJd: pd.endJd,
+          md: p.md, ad: p.lord, pd: pd.lord, allSig,
+          score: Math.round(total * 10) / 10, transit: tr,
+        });
+      });
+    });
+    wins.sort((a, b) => b.score - a.score);
+    const chrono = wins.slice().sort((a, b) => a.startJd - b.startJd);
+    const nearest = chrono.find((w) => w.score >= 4 && w.endJd >= fromJd) || chrono[0] || null;
+    let sigList = [], cuspSub = '-';
+    try {
+      sigList = KP.marriageSignificators(chart).slice(0, 8).map((s) => ({ planet: s.planet, strength: s.strength }));
+      cuspSub = KP.cuspSubLord(7, chart).subLord;
+    } catch (e) { /* ignore */ }
+    return { nearest, top: wins.slice(0, 6), sigList, cuspSub, sigStrength };
+  }
+
   // Couple nearest window: where both individual scores are high & overlapping
   function coupleMarriageWindow(boyChart, girlChart, fromJd) {
     const b = marriageWindow(boyChart, 'male', fromJd);
@@ -368,7 +409,7 @@ const Timeline = (function () {
   }
 
   return {
-    marriagePlanets, stressPlanets, marriageWindow,
+    marriagePlanets, stressPlanets, marriageWindow, kpMarriageWindow,
     coupleMarriageWindow, relationshipForecast, strengthSeries, strengthSeriesDual, strengthSeriesSingle,
     parasharaWeights, kpWeights, commitmentAt, scoreAt, band, clamp,
   };

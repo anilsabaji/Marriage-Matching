@@ -119,6 +119,7 @@
     r.kp = KP.coupleAssessment(boy, girl);
     r.health = Health.compatibility(boy, girl);
     r.window = Timeline.coupleMarriageWindow(boy, girl, state.fromJd);
+    r.kpTiming = { boy: Timeline.kpMarriageWindow(boy, state.fromJd, 20), girl: Timeline.kpMarriageWindow(girl, state.fromJd, 20) };
     r.forecast = Timeline.relationshipForecast(boy, girl, state.fromJd, 20);
     r.bhavaB = BPHS.analyzeAll(boy);
     r.bhavaG = BPHS.analyzeAll(girl);
@@ -168,6 +169,7 @@
     r.kuja = KujaDosha.analyze(chart);
     r.separation = Separation.analyze(chart, gender);
     r.window = Timeline.marriageWindow(chart, gender, state.fromJd);
+    r.kpTiming = Timeline.kpMarriageWindow(chart, state.fromJd, 20);
     r.single = Timeline.strengthSeriesSingle(chart, gender, state.fromJd, 20, 3);
     r.transit = Transit.summary(chart, state.fromJd, 20);
     r.progeny = Progeny.analyze(chart, gender, state.fromJd, 20);
@@ -279,7 +281,11 @@
         <div class="big-score" style="font-size:24px">${near}</div>
         <p class="small muted">Nearest favourable marriage window from the native's Vimśottari dasha + supportive transits.</p></div>
       <div class="card"><h3>Strongest marriage periods (next 20 years)</h3>
-        <table><thead><tr><th>Window</th><th>MD/AD/PD</th><th class="num">Score</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+        <table><thead><tr><th>Window</th><th>MD/AD/PD</th><th class="num">Score</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <h2 style="margin:6px 2px">KP-System Marriage Timing</h2>
+      <div class="grid-2">${kpTimingCard(r.kpTiming, r.name)}</div>
+      <div class="callout small">KP method: marriage fructifies in the conjoined <b>Daśā–Bhukti–Antara</b> of significators of houses
+        <b>2, 7 &amp; 11</b>. Rows where all three lords are marriage significators are marked ✔ (strongest).</div>`;
   }
 
   function renderForecastIndividual() {
@@ -381,7 +387,7 @@
       ${section('9 · Health', 'health')}
       ${section('10 · Sarvashtakavarga', 'sarvashtaka')}
       ${section('11 · Progeny (Santāna)', 'progeny')}
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.14</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.15</p>
       <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>`;
   }
 
@@ -832,6 +838,21 @@
   }
 
   /* ---------------- Timing ---------------- */
+  function kpTimingCard(kt, label) {
+    const n = kt && kt.nearest;
+    const near = n ? `${Dasha.fmtDMY(n.startJd)} – ${Dasha.fmtDMY(n.endJd)}` : '—';
+    const rows = (kt && kt.top ? kt.top : []).map((wn) => `<tr><td>${Dasha.fmtDMY(wn.startJd)} – ${Dasha.fmtDMY(wn.endJd)}</td><td>${wn.md}/${wn.ad}/${wn.pd}${wn.allSig ? ' <span class="chip good" style="padding:0 5px">✔</span>' : ''}</td><td class="num">${fix(wn.score, 1)}</td></tr>`).join('');
+    const sig = (kt && kt.sigList ? kt.sigList : []).map((s) => `${s.planet} (${s.strength})`).join(', ');
+    return `<div class="card">
+      <h3>${label} — KP timing</h3>
+      <div class="big-score" style="font-size:20px">${near}</div>
+      <div class="kv"><span>Dasha (MD/AD/PD)</span><span>${n ? `${n.md}/${n.ad}/${n.pd}` : '—'}</span></div>
+      <div class="kv"><span>7th cusp sub-lord</span><span><b>${kt ? kt.cuspSub : '—'}</b></span></div>
+      <p class="small"><b>Significators of 2/7/11:</b> ${sig || '—'}</p>
+      <table><thead><tr><th>Window</th><th>D/B/A lords</th><th class="num">Score</th></tr></thead><tbody>${rows || '<tr><td colspan="3" class="muted small">No clear KP marriage period in range.</td></tr>'}</tbody></table>
+    </div>`;
+  }
+
   function renderTiming() {
     const r = state.results; const w = r.window;
     function topList(person, label) {
@@ -872,6 +893,15 @@
       <div class="callout"><b>Note —</b> The <b>Muhūrta (electional date &amp; time) for the marriage should be fixed on the basis of the Girl's (Bride's) chart.</b>
         Her Janma Rāśi / Nakṣatra, Candra-bala and Tārā-bala, and the avoidance of afflictions to her 7th/8th houses take precedence
         when choosing the wedding day and lagna. The groom's chart is supportive/secondary for muhūrta selection.</div>
+
+      <h2 style="margin:6px 2px">KP-System Marriage Timing</h2>
+      <div class="grid-2">
+        ${kpTimingCard(r.kpTiming.boy, 'Groom (Boy)')}
+        ${kpTimingCard(r.kpTiming.girl, 'Bride (Girl)')}
+      </div>
+      <div class="callout small">KP method: marriage fructifies in the conjoined <b>Daśā–Bhukti–Antara</b> of planets that are
+        significators of houses <b>2, 7 &amp; 11</b>. Rows where the Daśā, Bhukti and Antara lords are <i>all</i> marriage
+        significators are marked ✔ (strongest). The 7th cusp sub-lord must promise marriage for these periods to deliver.</div>
 
       <div class="grid-2">
         ${topList(w.boy, 'Groom')}
@@ -1397,7 +1427,7 @@
       ${section('10 · Sarvashtakavarga (SAV)', 'sarvashtaka')}
       ${section('11 · Progeny (Santāna)', 'progeny')}
 
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.14</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.15</p>
       <p class="dev-credit footer-credit">Developed by <b>Dr. Anil Sabaji</b> &nbsp;•&nbsp; Email: anilsabaji@gmail.com</p>
     `;
   }
@@ -1438,7 +1468,7 @@
   let _reportCss = null;
   async function getReportCss() {
     if (_reportCss != null) return _reportCss;
-    try { const res = await fetch('css/styles.css?v=27'); _reportCss = res.ok ? await res.text() : ''; }
+    try { const res = await fetch('css/styles.css?v=28'); _reportCss = res.ok ? await res.text() : ''; }
     catch (e) { _reportCss = ''; }
     return _reportCss;
   }
@@ -1520,7 +1550,7 @@ ${pdfMode ? '/* PDF raster mode: no body padding (margins come from html2pdf); f
 <div class="report-meta">Generated ${esc(dateStr)} — Vedic Marriage Matching Module (BPHS &amp; KP)</div>
 <div id="report-content">${reportHtml}</div>
 <p class="footer-note" style="text-align:center;margin-top:24px;opacity:.7;font-size:11.5px">
-  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.14
+  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.15
 </p>
 <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>
 </body>
