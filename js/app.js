@@ -381,7 +381,7 @@
       ${section('9 · Health', 'health')}
       ${section('10 · Sarvashtakavarga', 'sarvashtaka')}
       ${section('11 · Progeny (Santāna)', 'progeny')}
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.13</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.14</p>
       <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>`;
   }
 
@@ -837,19 +837,42 @@
     function topList(person, label) {
       let rows = '';
       person.topByScore.forEach((t) => {
-        rows += `<tr><td>${Dasha.fmtYM(t.startJd)} – ${Dasha.fmtYM(t.endJd)}</td><td>${t.md}/${t.ad}/${t.pd}</td><td class="num">${fix(t.score,1)}</td></tr>`;
+        rows += `<tr><td>${Dasha.fmtDMY(t.startJd)} – ${Dasha.fmtDMY(t.endJd)}</td><td>${t.md}/${t.ad}/${t.pd}</td><td class="num">${fix(t.score,1)}</td></tr>`;
       });
       return `<div class="card"><h3>${label} — strongest marriage periods</h3>
         <table><thead><tr><th>Window</th><th>MD/AD/PD</th><th class="num">Score</th></tr></thead><tbody>${rows}</tbody></table></div>`;
     }
+    const fmtWin = (n) => n ? `${Dasha.fmtDMY(n.startJd)} – ${Dasha.fmtDMY(n.endJd)}` : '—';
+    const period = (n) => n ? `${n.md}/${n.ad}/${n.pd}` : '—';
     $('tab-timing').innerHTML = `
       <div class="card">
         <h2>Nearest Marriage Timing</h2>
         <div class="big-score" style="font-size:26px">${esc(w.nearestRange)}</div>
-        <p class="small muted">Earliest window where both partners' Dasha readiness and supportive transits coincide.</p>
+        <p class="small muted"><b>Joint window</b> — earliest season where both partners' Dasha readiness and supportive transits coincide.</p>
         <div class="kv"><span>Groom running Dasha then</span><span>${w.boyDasha ? `${w.boyDasha.md.lord}/${w.boyDasha.ad?w.boyDasha.ad.lord:'-'}/${w.boyDasha.pd?w.boyDasha.pd.lord:'-'}` : '-'}</span></div>
         <div class="kv"><span>Bride running Dasha then</span><span>${w.girlDasha ? `${w.girlDasha.md.lord}/${w.girlDasha.ad?w.girlDasha.ad.lord:'-'}/${w.girlDasha.pd?w.girlDasha.pd.lord:'-'}` : '-'}</span></div>
       </div>
+
+      <h2 style="margin:6px 2px">Individual Marriage Timing</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Groom (Boy) — own chart</h3>
+          <div class="big-score" style="font-size:20px">${fmtWin(w.boy.nearest)}</div>
+          <div class="kv"><span>Dasha (MD/AD/PD)</span><span>${period(w.boy.nearest)}</span></div>
+          <p class="small muted">Nearest favourable marriage window derived from the groom's own Vimśottari dasha + transits.</p>
+        </div>
+        <div class="card">
+          <h3>Bride (Girl) — own chart</h3>
+          <div class="big-score" style="font-size:20px">${fmtWin(w.girl.nearest)}</div>
+          <div class="kv"><span>Dasha (MD/AD/PD)</span><span>${period(w.girl.nearest)}</span></div>
+          <p class="small muted">Nearest favourable marriage window derived from the bride's own Vimśottari dasha + transits.</p>
+        </div>
+      </div>
+
+      <div class="callout"><b>Note —</b> The <b>Muhūrta (electional date &amp; time) for the marriage should be fixed on the basis of the Girl's (Bride's) chart.</b>
+        Her Janma Rāśi / Nakṣatra, Candra-bala and Tārā-bala, and the avoidance of afflictions to her 7th/8th houses take precedence
+        when choosing the wedding day and lagna. The groom's chart is supportive/secondary for muhūrta selection.</div>
+
       <div class="grid-2">
         ${topList(w.boy, 'Groom')}
         ${topList(w.girl, 'Bride')}
@@ -1374,7 +1397,7 @@
       ${section('10 · Sarvashtakavarga (SAV)', 'sarvashtaka')}
       ${section('11 · Progeny (Santāna)', 'progeny')}
 
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.13</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.14</p>
       <p class="dev-credit footer-credit">Developed by <b>Dr. Anil Sabaji</b> &nbsp;•&nbsp; Email: anilsabaji@gmail.com</p>
     `;
   }
@@ -1415,7 +1438,7 @@
   let _reportCss = null;
   async function getReportCss() {
     if (_reportCss != null) return _reportCss;
-    try { const res = await fetch('css/styles.css?v=26'); _reportCss = res.ok ? await res.text() : ''; }
+    try { const res = await fetch('css/styles.css?v=27'); _reportCss = res.ok ? await res.text() : ''; }
     catch (e) { _reportCss = ''; }
     return _reportCss;
   }
@@ -1497,7 +1520,7 @@ ${pdfMode ? '/* PDF raster mode: no body padding (margins come from html2pdf); f
 <div class="report-meta">Generated ${esc(dateStr)} — Vedic Marriage Matching Module (BPHS &amp; KP)</div>
 <div id="report-content">${reportHtml}</div>
 <p class="footer-note" style="text-align:center;margin-top:24px;opacity:.7;font-size:11.5px">
-  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.13
+  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.14
 </p>
 <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>
 </body>
