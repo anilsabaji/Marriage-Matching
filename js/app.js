@@ -381,7 +381,7 @@
       ${section('9 · Health', 'health')}
       ${section('10 · Sarvashtakavarga', 'sarvashtaka')}
       ${section('11 · Progeny (Santāna)', 'progeny')}
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.11</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.12</p>
       <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>`;
   }
 
@@ -1374,7 +1374,7 @@
       ${section('10 · Sarvashtakavarga (SAV)', 'sarvashtaka')}
       ${section('11 · Progeny (Santāna)', 'progeny')}
 
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.11</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.12</p>
       <p class="dev-credit footer-credit">Developed by <b>Dr. Anil Sabaji</b> &nbsp;•&nbsp; Email: anilsabaji@gmail.com</p>
     `;
   }
@@ -1415,7 +1415,7 @@
   let _reportCss = null;
   async function getReportCss() {
     if (_reportCss != null) return _reportCss;
-    try { const res = await fetch('css/styles.css?v=24'); _reportCss = res.ok ? await res.text() : ''; }
+    try { const res = await fetch('css/styles.css?v=25'); _reportCss = res.ok ? await res.text() : ''; }
     catch (e) { _reportCss = ''; }
     return _reportCss;
   }
@@ -1454,7 +1454,16 @@ h1, h2, h3, .big-score, .card h2 {
 table { width:100% !important; max-width:100% !important; table-layout:fixed; font-size:9px; }
 th, td { word-break:break-word; overflow-wrap:anywhere; white-space:normal; padding:3px 4px; border-color:#ccc; }
 th { color:#333 !important; background:#f0f0f0 !important; }
-svg, .chart-svg, .pipe-svg { max-width:100% !important; height:auto !important; }
+/* ---- keep everything within the page width (applies on screen, print & html2canvas raster) ---- */
+#report-content, .card, .report-section, .report-cover, .bhava-house-card,
+.chart-box, .grid-2, .grid-3, .bhava-compare-grid,
+.pdf-render #report-content, .pdf-render .card, .pdf-render .report-section, .pdf-render .bhava-house-card,
+.pdf-render .grid-2, .pdf-render .grid-3, .pdf-render .bhava-compare-grid { min-width:0 !important; max-width:100% !important; overflow:hidden !important; }
+.chart-triple, .pdf-render .chart-triple { display:grid !important; grid-template-columns: repeat(3, minmax(0,1fr)) !important; gap:6px !important; }
+.chart-box, .pdf-render .chart-box { min-width:0 !important; }
+svg, .chart-svg, .pipe-svg, .pdf-render svg, .pdf-render .chart-svg, .pdf-render .pipe-svg { width:100% !important; max-width:100% !important; height:auto !important; display:block; }
+.bav-table { table-layout:fixed !important; width:100% !important; font-size:7px !important; }
+.bav-table th, .bav-table td { padding:1px 2px !important; }
 .chart-svg .chart-planet { fill:#111 !important; } .chart-svg .chart-sign { fill:#0a7a52 !important; }
 .chart-svg .chart-title { fill:#5b3fb0 !important; }
 .chip { border:1px solid #999 !important; background:#f3f3f3 !important; }
@@ -1482,7 +1491,7 @@ ${pdfMode ? '/* PDF raster mode: no body padding (margins come from html2pdf); f
 <div class="report-meta">Generated ${esc(dateStr)} — Vedic Marriage Matching Module (BPHS &amp; KP)</div>
 <div id="report-content">${reportHtml}</div>
 <p class="footer-note" style="text-align:center;margin-top:24px;opacity:.7;font-size:11.5px">
-  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.11
+  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.12
 </p>
 <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>
 </body>
