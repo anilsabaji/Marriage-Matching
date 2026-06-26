@@ -381,7 +381,7 @@
       ${section('9 · Health', 'health')}
       ${section('10 · Sarvashtakavarga', 'sarvashtaka')}
       ${section('11 · Progeny (Santāna)', 'progeny')}
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.9</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.10</p>
       <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>`;
   }
 
@@ -1374,7 +1374,7 @@
       ${section('10 · Sarvashtakavarga (SAV)', 'sarvashtaka')}
       ${section('11 · Progeny (Santāna)', 'progeny')}
 
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.9</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.10</p>
       <p class="dev-credit footer-credit">Developed by <b>Dr. Anil Sabaji</b> &nbsp;•&nbsp; Email: anilsabaji@gmail.com</p>
     `;
   }
@@ -1415,7 +1415,7 @@
   let _reportCss = null;
   async function getReportCss() {
     if (_reportCss != null) return _reportCss;
-    try { const res = await fetch('css/styles.css?v=22'); _reportCss = res.ok ? await res.text() : ''; }
+    try { const res = await fetch('css/styles.css?v=23'); _reportCss = res.ok ? await res.text() : ''; }
     catch (e) { _reportCss = ''; }
     return _reportCss;
   }
@@ -1458,9 +1458,14 @@ svg, .chart-svg, .pipe-svg { max-width:100% !important; height:auto !important; 
 .chart-svg .chart-title { fill:#5b3fb0 !important; }
 .chip { border:1px solid #999 !important; background:#f3f3f3 !important; }
 .gauge .fill, .report-section-title, .bhava-sign-badge { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-@page { size: A4 portrait; margin: 10mm; }
+@page { size: A4 portrait; margin: 12mm; }
 @media print {
-  body { padding:0; }
+  /* Fit the printable area exactly and centre via the symmetric @page margins. */
+  html, body { width:100% !important; max-width:100% !important; margin:0 auto !important; padding:0 !important; }
+  #report-content { width:100% !important; max-width:100% !important; margin:0 auto !important; }
+  .card, .report-section, .report-cover, .bhava-house-card {
+    margin-left:auto !important; margin-right:auto !important; max-width:100% !important; }
+  .chart-triple { justify-content:center !important; }
   .report-section { page-break-before: always; }
   .report-cover { page-break-after: always; }
 }
@@ -1475,7 +1480,7 @@ svg, .chart-svg, .pipe-svg { max-width:100% !important; height:auto !important; 
 <div class="report-meta">Generated ${esc(dateStr)} — Vedic Marriage Matching Module (BPHS &amp; KP)</div>
 <div id="report-content">${reportHtml}</div>
 <p class="footer-note" style="text-align:center;margin-top:24px;opacity:.7;font-size:11.5px">
-  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.9
+  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.10
 </p>
 <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>
 </body>
