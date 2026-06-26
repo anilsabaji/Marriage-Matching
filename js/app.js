@@ -381,7 +381,7 @@
       ${section('9 · Health', 'health')}
       ${section('10 · Sarvashtakavarga', 'sarvashtaka')}
       ${section('11 · Progeny (Santāna)', 'progeny')}
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.12</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.13</p>
       <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>`;
   }
 
@@ -1374,7 +1374,7 @@
       ${section('10 · Sarvashtakavarga (SAV)', 'sarvashtaka')}
       ${section('11 · Progeny (Santāna)', 'progeny')}
 
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.12</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.13</p>
       <p class="dev-credit footer-credit">Developed by <b>Dr. Anil Sabaji</b> &nbsp;•&nbsp; Email: anilsabaji@gmail.com</p>
     `;
   }
@@ -1415,7 +1415,7 @@
   let _reportCss = null;
   async function getReportCss() {
     if (_reportCss != null) return _reportCss;
-    try { const res = await fetch('css/styles.css?v=25'); _reportCss = res.ok ? await res.text() : ''; }
+    try { const res = await fetch('css/styles.css?v=26'); _reportCss = res.ok ? await res.text() : ''; }
     catch (e) { _reportCss = ''; }
     return _reportCss;
   }
@@ -1458,7 +1458,13 @@ th { color:#333 !important; background:#f0f0f0 !important; }
 #report-content, .card, .report-section, .report-cover, .bhava-house-card,
 .chart-box, .grid-2, .grid-3, .bhava-compare-grid,
 .pdf-render #report-content, .pdf-render .card, .pdf-render .report-section, .pdf-render .bhava-house-card,
-.pdf-render .grid-2, .pdf-render .grid-3, .pdf-render .bhava-compare-grid { min-width:0 !important; max-width:100% !important; overflow:hidden !important; }
+.pdf-render .grid-2, .pdf-render .grid-3, .pdf-render .bhava-compare-grid { min-width:0 !important; max-width:100% !important; overflow:visible !important; }
+/* ---- solid, fixed-height strength bars (html2canvas drops %-height + var() gradients) ---- */
+.gauge .bar, .pdf-render .gauge .bar { height:12px !important; background:#eaeaea !important; border:1px solid #bbb !important; border-radius:8px; overflow:hidden; box-shadow:none !important; }
+.gauge .fill, .pdf-render .gauge .fill { height:12px !important; min-height:12px !important; border-radius:8px; box-shadow:none !important; background:#5b3fb0 !important; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
+.gauge .fill.good, .pdf-render .gauge .fill.good { background:#13a05a !important; }
+.gauge .fill.mid,  .pdf-render .gauge .fill.mid  { background:#e0a400 !important; }
+.gauge .fill.bad,  .pdf-render .gauge .fill.bad  { background:#cc3b34 !important; }
 .chart-triple, .pdf-render .chart-triple { display:grid !important; grid-template-columns: repeat(3, minmax(0,1fr)) !important; gap:6px !important; }
 .chart-box, .pdf-render .chart-box { min-width:0 !important; }
 svg, .chart-svg, .pipe-svg, .pdf-render svg, .pdf-render .chart-svg, .pdf-render .pipe-svg { width:100% !important; max-width:100% !important; height:auto !important; display:block; }
@@ -1491,7 +1497,7 @@ ${pdfMode ? '/* PDF raster mode: no body padding (margins come from html2pdf); f
 <div class="report-meta">Generated ${esc(dateStr)} — Vedic Marriage Matching Module (BPHS &amp; KP)</div>
 <div id="report-content">${reportHtml}</div>
 <p class="footer-note" style="text-align:center;margin-top:24px;opacity:.7;font-size:11.5px">
-  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.12
+  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.13
 </p>
 <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>
 </body>
@@ -1542,10 +1548,11 @@ ${pdfMode ? '/* PDF raster mode: no body padding (margins come from html2pdf); f
       if (started) return; started = true;
       window.html2pdf().set({
         margin: 10, filename: name, // uniform 10mm margins on all sides → centred
-        image: { type: 'jpeg', quality: 0.95 },
-        html2canvas: { scale: 1.7, backgroundColor: '#ffffff', useCORS: true, logging: false, width: 794, windowWidth: 794 },
+        image: { type: 'png' }, // PNG keeps text crisp (JPEG can blur/garble small text)
+        html2canvas: { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false, letterRendering: true, width: 794, windowWidth: 794 },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        pagebreak: { mode: ['css', 'legacy'], before: '.report-section' },
+        // avoid slicing through these elements (mid-line slices cause missing/garbled text)
+        pagebreak: { mode: ['css', 'legacy'], before: '.report-section', avoid: ['tr', '.gauge', '.kv', '.chip', '.bhava-house-card', '.chart-box', 'h2', 'h3', 'svg'] },
       }).from(idoc.body).save().then(cleanup).catch((e) => { console.error('PDF error', e); cleanup(); printReportNow(); });
     };
     iframe.onload = () => setTimeout(run, 350);
