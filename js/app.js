@@ -376,7 +376,7 @@
       ${section('8 · Transits (Gochara)', 'transit')}
       ${section('9 · Health', 'health')}
       ${section('10 · Sarvashtakavarga', 'sarvashtaka')}
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.6</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.7</p>
       <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>`;
   }
 
@@ -1236,7 +1236,7 @@
       ${section('9 · Health Compatibility', 'health')}
       ${section('10 · Sarvashtakavarga (SAV)', 'sarvashtaka')}
 
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.6</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.7</p>
       <p class="dev-credit footer-credit">Developed by <b>Dr. Anil Sabaji</b> &nbsp;•&nbsp; Email: anilsabaji@gmail.com</p>
     `;
   }
@@ -1248,6 +1248,29 @@
   }
   function forecastMini(f) {
     return `<table><thead><tr><th>Period</th><th class="num">Combined</th><th>Band</th></tr></thead><tbody>${f.slice(0,10).map((x)=>`<tr><td>${x.start} – ${x.end}</td><td class="num">${x.combined}</td><td>${x.band.label}</td></tr>`).join('')}</tbody></table>`;
+  }
+
+  /* Mode-aware report naming/titles. In Individual mode one of state.boy/girl
+     is null, so derive everything from state.results / state.subject. */
+  function reportInfo() {
+    const r = state.results || {};
+    if (r.individual) {
+      const subj = (r.name || (state.subject && state.subject.meta && state.subject.meta.name) || 'Individual');
+      return {
+        individual: true,
+        fileBase: `Marriage-Report-${(state.subject && state.subject.meta ? state.subject.meta.name : 'Individual')}`.replace(/\s+/g, '_'),
+        title: `Individual Marriage Report — ${esc(subj)}`,
+        subtitle: esc(subj),
+      };
+    }
+    const b = state.boy && state.boy.meta ? state.boy.meta.name : 'Groom';
+    const g = state.girl && state.girl.meta ? state.girl.meta.name : 'Bride';
+    return {
+      individual: false,
+      fileBase: `Marriage-Report-${b}-${g}`.replace(/\s+/g, '_'),
+      title: `Marriage Compatibility Report — ${esc(b)} & ${esc(g)}`,
+      subtitle: `${esc(b)} &amp; ${esc(g)}`,
+    };
   }
 
   $('printReport').addEventListener('click', () => {
@@ -1267,7 +1290,7 @@
   $('downloadPdf').addEventListener('click', () => {
     if (!state.results) { alert('Please generate a report first (Tab 1).'); return; }
     const el = $('report-content');
-    const name = `Marriage-Report-${state.boy.meta.name}-${state.girl.meta.name}.pdf`.replace(/\s+/g, '_');
+    const name = `${reportInfo().fileBase}.pdf`;
     if (window.html2pdf) {
       // Apply light printable theme so output isn't blank (white-on-white)
       el.classList.add('pdf-render');
@@ -1294,17 +1317,16 @@
       if (res.ok) css = await res.text();
     } catch (e) { /* fallback to minimal inline styles below */ }
 
-    const boyName = esc(state.boy.meta.name);
-    const girlName = esc(state.girl.meta.name);
+    const info = reportInfo();
     const dateStr = nowDMY();
-    const fileName = `Marriage-Report-${state.boy.meta.name}-${state.girl.meta.name}.html`.replace(/\s+/g, '_');
+    const fileName = `${info.fileBase}.html`;
 
     const doc = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Marriage Compatibility Report — ${boyName} & ${girlName}</title>
+<title>${info.title}</title>
 <style>
 ${css}
 /* standalone overrides so the report is readable on its own */
@@ -1317,13 +1339,13 @@ body { padding: 24px; max-width: 1000px; margin: 0 auto; }
 <body>
 <header class="app-header" style="border-radius:14px;margin-bottom:18px">
   <h1><span class="om">&#x0950;</span> Vedic Marriage Matching Report</h1>
-  <p>${boyName} &amp; ${girlName}</p>
+  <p>${info.subtitle}</p>
   <p class="dev-credit">By <b>Dr. Anil Sabaji</b>, Email: <a href="mailto:anilsabaji@gmail.com">anilsabaji@gmail.com</a></p>
 </header>
 <div class="report-meta">Generated ${esc(dateStr)} — Vedic Marriage Matching Module (BPHS &amp; KP)</div>
 <div id="report-content">${reportHtml}</div>
 <p class="footer-note" style="text-align:center;margin-top:24px;opacity:.7;font-size:11.5px">
-  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.6
+  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.7
 </p>
 <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>
 </body>
