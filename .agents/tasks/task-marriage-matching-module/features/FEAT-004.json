@@ -2,7 +2,7 @@
   "id": "FEAT-004",
   "type": "feat",
   "description": "Implement Health Compatibility screener, Ashtakoota (8 koota) matching with detailed scores, and Dashakoota (10 koota) matching with detailed scores.",
-  "status": "pending",
+  "status": "in_progress",
   "steps": [
     "Create js/health.js implementing a Health Compatibility Screener: (a) 6th house analysis (disease house) - planets in 6th, lord of 6th, afflictions. (b) 8th house analysis (longevity) - planets in 8th, lord of 8th. (c) Ascendant strength analysis for both partners. (d) Moon sign compatibility for mental health. (e) Mars dosha (Manglik) analysis and its health implications. (f) Saturn's influence on vitality. (g) Specific disease indicators from planetary combinations (Sun affliction = bone/heart, Moon = mental/fluid, Mars = blood/accidents, etc.). (h) Generate a health compatibility score and detailed report showing potential health concerns for both individuals and combined compatibility.",
     "Create js/koota.js implementing Ashtakoota (8 Koota) matching: (a) Varna Koota (1 point) - spiritual compatibility based on Moon sign varna (Brahmin/Kshatriya/Vaishya/Shudra). (b) Vashya Koota (2 points) - mutual attraction/dominance. (c) Tara Koota (3 points) - destiny compatibility based on birth star count. (d) Yoni Koota (4 points) - physical/sexual compatibility based on animal symbols of nakshatras. (e) Graha Maitri (5 points) - mental compatibility based on Moon sign lords' friendship. (f) Gana Koota (6 points) - temperament matching (Deva/Manushya/Rakshasa). (g) Bhakoot Koota (7 points) - emotional compatibility and progeny. (h) Nadi Koota (8 points) - health and genes compatibility (Vata/Pitta/Kapha). Total maximum: 36 points. Show detailed breakdown and final score.",
