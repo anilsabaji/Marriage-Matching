@@ -8,7 +8,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <link rel="stylesheet" href="css/styles.css?v=20" />
+  <link rel="stylesheet" href="css/styles.css?v=21" />
   <!-- html2pdf for PDF export (graceful fallback to window.print) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" defer></script>
 </head>
@@ -37,8 +37,9 @@
       <button class="tab-btn" data-tab="transit">10 &middot; Transits</button>
       <button class="tab-btn" data-tab="health">11 &middot; Health Compatibility</button>
       <button class="tab-btn" data-tab="sarvashtaka">12 &middot; Sarvashtakavarga</button>
-      <button class="tab-btn" data-tab="manual">13 &middot; Technical Manual</button>
-      <button class="tab-btn" data-tab="report">14 &middot; PDF Report</button>
+      <button class="tab-btn" data-tab="progeny">13 &middot; Progeny</button>
+      <button class="tab-btn" data-tab="manual">14 &middot; Technical Manual</button>
+      <button class="tab-btn" data-tab="report">15 &middot; PDF Report</button>
     </nav>
 
     <!-- 1. INPUT -->
@@ -130,6 +131,7 @@
     <section class="tab-panel" id="tab-transit"><div class="card"><div class="placeholder">Generate a report to view transits.</div></div></section>
     <section class="tab-panel" id="tab-health"><div class="card"><div class="placeholder">Generate a report to view health compatibility.</div></div></section>
     <section class="tab-panel" id="tab-sarvashtaka"><div class="card"><div class="placeholder">Generate a report to view Sarvashtakavarga analysis.</div></div></section>
+    <section class="tab-panel" id="tab-progeny"><div class="card"><div class="placeholder">Generate a report to view the Progeny (Santāna) analysis.</div></div></section>
     <section class="tab-panel" id="tab-manual"></section>
 
     <!-- 12. REPORT -->
@@ -147,26 +149,27 @@
       <div id="report-content"><div class="placeholder">Generate a report first (Tab 1), then return here to export.</div></div>
     </section>
 
-    <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations on a self-contained ephemeris — see the Technical Manual for accuracy notes. <span style="opacity:.4">Build v5.7</span></p>
+    <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations on a self-contained ephemeris — see the Technical Manual for accuracy notes. <span style="opacity:.4">Build v5.8</span></p>
     <p class="dev-credit footer-credit">Developed by <b>Dr. Anil Sabaji</b> &nbsp;•&nbsp; Email: <a href="mailto:anilsabaji@gmail.com">anilsabaji@gmail.com</a></p>
   </div>
 
-  <script src="js/astro-core.js?v=20"></script>
-  <script src="js/bphs.js?v=20"></script>
-  <script src="js/bhava-indications.js?v=20"></script>
-  <script src="js/kp.js?v=20"></script>
-  <script src="js/koota.js?v=20"></script>
-  <script src="js/dasha.js?v=20"></script>
-  <script src="js/transit.js?v=20"></script>
-  <script src="js/planet-strength.js?v=20"></script>
-  <script src="js/chart-draw.js?v=20"></script>
-  <script src="js/kuja.js?v=20"></script>
-  <script src="js/separation.js?v=20"></script>
-  <script src="js/timeline.js?v=20"></script>
-  <script src="js/health.js?v=20"></script>
-  <script src="js/sarvashtaka.js?v=20"></script>
-  <script src="js/geocity.js?v=20"></script>
-  <script src="js/manual.js?v=20"></script>
-  <script src="js/app.js?v=20"></script>
+  <script src="js/astro-core.js?v=21"></script>
+  <script src="js/bphs.js?v=21"></script>
+  <script src="js/bhava-indications.js?v=21"></script>
+  <script src="js/kp.js?v=21"></script>
+  <script src="js/koota.js?v=21"></script>
+  <script src="js/dasha.js?v=21"></script>
+  <script src="js/transit.js?v=21"></script>
+  <script src="js/planet-strength.js?v=21"></script>
+  <script src="js/chart-draw.js?v=21"></script>
+  <script src="js/kuja.js?v=21"></script>
+  <script src="js/separation.js?v=21"></script>
+  <script src="js/timeline.js?v=21"></script>
+  <script src="js/health.js?v=21"></script>
+  <script src="js/sarvashtaka.js?v=21"></script>
+  <script src="js/progeny.js?v=21"></script>
+  <script src="js/geocity.js?v=21"></script>
+  <script src="js/manual.js?v=21"></script>
+  <script src="js/app.js?v=21"></script>
 </body>
 </html>

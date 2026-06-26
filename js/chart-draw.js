@@ -159,6 +159,36 @@ const ChartDraw = (function () {
   }
 
   /* ======================================================================
+   * D7 — Saptāṁśa chart (divisional chart for progeny / children)
+   * Each sign is divided into 7 equal parts of 30/7 = 4°17'8.57".
+   * Classical rule: for ODD signs (Aries, Gemini, Leo … = 1-based odd) the
+   * count starts from the same sign; for EVEN signs it starts from the 7th
+   * sign from it. (signIndex even = odd-numbered sign.)
+   * ==================================================================== */
+  function saptamsaSign(sidLon) {
+    const sign = Math.floor(sidLon / 30);
+    const deg = sidLon - sign * 30;
+    const div = Math.floor(deg / (30 / 7)); // 0..6
+    const start = (sign % 2 === 0) ? sign : (sign + 6) % 12;
+    return (start + div) % 12;
+  }
+
+  function d7Chart(chart, label) {
+    const signContents = {};
+    for (let i = 0; i < 12; i++) signContents[i] = [];
+    const d7Lagna = saptamsaSign(chart.ascendant.lon);
+    signContents[d7Lagna].push('As');
+    Astro.PLANETS.forEach((p) => {
+      const pl = chart.planets[p];
+      const s = saptamsaSign(pl.lon);
+      let lbl = PLANET_ABBR[p] || p.substring(0, 2);
+      if (pl.retro && p !== 'Rahu' && p !== 'Ketu') lbl += 'ᴿ';
+      signContents[s].push(lbl);
+    });
+    return svgChart(label || 'D7 Saptāṁśa', signContents, d7Lagna);
+  }
+
+  /* ======================================================================
    * KP Placidus chart — uses the KP cusp data from astro-core
    * Planets placed by KP house (from Porphyry cusps).
    * We label each house box with the cusp sign + degree.
@@ -205,6 +235,19 @@ const ChartDraw = (function () {
       <div class="chart-triple">
         <div class="chart-box">${d1Chart(chart, nameLabel + ' — D1 Rāśi')}</div>
         <div class="chart-box">${d9Chart(chart, nameLabel + ' — D9 Navāṁśa')}</div>
+        <div class="chart-box">${kpChart(chart, nameLabel + ' — KP Placidus')}</div>
+      </div>`;
+  }
+
+  /* ======================================================================
+   * Render D1 / D9 / D7 / KP side by side (used by the Progeny tab)
+   * ==================================================================== */
+  function renderQuad(chart, nameLabel) {
+    return `
+      <div class="chart-triple">
+        <div class="chart-box">${d1Chart(chart, nameLabel + ' — D1 Rāśi')}</div>
+        <div class="chart-box">${d9Chart(chart, nameLabel + ' — D9 Navāṁśa')}</div>
+        <div class="chart-box">${d7Chart(chart, nameLabel + ' — D7 Saptāṁśa')}</div>
         <div class="chart-box">${kpChart(chart, nameLabel + ' — KP Placidus')}</div>
       </div>`;
   }
@@ -306,7 +349,7 @@ const ChartDraw = (function () {
     return svg;
   }
 
-  return { svgChart, d1Chart, d9Chart, kpChart, navamsaSign, renderTriple, relationshipPipe, relationshipPipeDual, singleCommitment, SIGN_ABBR, PLANET_ABBR, SI_GRID, SIGN_POS };
+  return { svgChart, d1Chart, d9Chart, d7Chart, kpChart, navamsaSign, saptamsaSign, renderTriple, renderQuad, relationshipPipe, relationshipPipeDual, singleCommitment, SIGN_ABBR, PLANET_ABBR, SI_GRID, SIGN_POS };
 
   /* ======================================================================
    * Single-person commitment graph: KP (amber) & Parāśara (green) marriage

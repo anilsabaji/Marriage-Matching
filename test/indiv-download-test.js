@@ -7,7 +7,7 @@ const vm = require('vm');
 
 const root = path.join(__dirname, '..');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-const scripts = ['astro-core', 'bphs', 'bhava-indications', 'kp', 'koota', 'dasha', 'transit', 'planet-strength', 'chart-draw', 'kuja', 'separation', 'timeline', 'health', 'sarvashtaka', 'geocity', 'manual', 'app']
+const scripts = ['astro-core', 'bphs', 'bhava-indications', 'kp', 'koota', 'dasha', 'transit', 'planet-strength', 'chart-draw', 'kuja', 'separation', 'timeline', 'health', 'sarvashtaka', 'progeny', 'geocity', 'manual', 'app']
   .map((n) => fs.readFileSync(path.join(root, 'js', n + '.js'), 'utf8'));
 const htmlNoScripts = html.replace(/<script[^>]*src=[^>]*><\/script>/g, '');
 
@@ -39,6 +39,12 @@ catch (e) { console.error('Individual submit threw:', e); process.exit(1); }
 const rep = window.document.getElementById('report-content').innerHTML;
 console.log('OK   individual report rendered (', rep.length, 'chars)');
 if (!rep.includes('Individual Marriage Analysis')) { console.error('FAIL: individual report cover missing'); process.exit(1); }
+
+// Verify the Progeny tab rendered for the individual (uses Kṣetra for girl)
+const prog = window.document.getElementById('tab-progeny').innerHTML;
+if (!prog.includes('Progeny (Santāna) Analysis')) { console.error('FAIL: individual progeny tab not rendered'); process.exit(1); }
+if (!prog.includes('Kṣetra')) { console.error('FAIL: individual (girl) progeny should use Kṣetra Sphuṭa'); process.exit(1); }
+console.log('OK   individual progeny tab rendered (', prog.length, 'chars; Kṣetra Sphuṭa present)');
 
 // Trigger Download HTML (this read state.boy.meta.name before the fix -> TypeError)
 try { window.document.getElementById('downloadHtml').click(); }
