@@ -126,6 +126,7 @@
     r.transitB = Transit.summary(boy, state.fromJd, 20);
     r.transitG = Transit.summary(girl, state.fromJd, 20);
     r.sarvashtaka = Sarvashtaka.coupleAnalysis(boy, girl);
+    r.progeny = Progeny.couple(boy, girl, state.fromJd, 20);
     r.strengthSeries = Timeline.strengthSeries(boy, girl, state.fromJd, 20, 3);
     r.strengthDual = Timeline.strengthSeriesDual(boy, girl, state.fromJd, 20, 3);
     state.results = r;
@@ -143,6 +144,7 @@
     safeRender(renderTransit, 'Transit');
     safeRender(renderHealth, 'Health');
     safeRender(renderSarvashtaka, 'Sarvashtaka');
+    safeRender(renderProgeny, 'Progeny');
     safeRender(renderReport, 'Report');
   }
 
@@ -168,6 +170,7 @@
     r.window = Timeline.marriageWindow(chart, gender, state.fromJd);
     r.single = Timeline.strengthSeriesSingle(chart, gender, state.fromJd, 20, 3);
     r.transit = Transit.summary(chart, state.fromJd, 20);
+    r.progeny = Progeny.analyze(chart, gender, state.fromJd, 20);
     state.results = r;
 
     const SR = (fn, n) => { try { fn(); } catch (e) { console.warn(n + ' (indiv) render error:', e); } };
@@ -183,6 +186,7 @@
     SR(() => { $('tab-transit').innerHTML = `<div class="card"><h2>Gochara (Transit) Outlook — ${esc(name)}</h2>${header(chart)}${transitTable(r.transit)}</div>`; }, 'Transit');
     SR(renderHealthIndividual, 'Health');
     SR(renderSavIndividual, 'Sarvashtaka');
+    SR(renderProgenyIndividual, 'Progeny');
     SR(renderReportIndividual, 'Report');
   }
 
@@ -376,7 +380,8 @@
       ${section('8 · Transits (Gochara)', 'transit')}
       ${section('9 · Health', 'health')}
       ${section('10 · Sarvashtakavarga', 'sarvashtaka')}
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.7</p>
+      ${section('11 · Progeny (Santāna)', 'progeny')}
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.8</p>
       <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>`;
   }
 
@@ -1179,6 +1184,138 @@
     return labels[h] || '';
   }
 
+  /* ---------------- Progeny (Santāna) ---------------- */
+  function progSphutaCard(s) {
+    const cls = s.strong ? 'good' : (s.score >= 40 ? 'mid' : 'bad');
+    const title = s.kind === 'Beeja' ? 'Beeja Sphuṭa (Male — “Seed” / potency)' : 'Kṣetra Sphuṭa (Female — “Field” / fertility)';
+    return `<div class="card" style="margin:0">
+      <h3>${title}</h3>
+      ${gaugePct(s.kind + ' strength', s.score, cls)}
+      <div class="kv"><span>Falls in rāśi</span><span><b>${s.signName}</b> (${degStr(s.degInSign)}) — ${s.isOddRasi ? 'odd' : 'even'} sign</span></div>
+      <div class="kv"><span>Navāṁśa</span><span>${s.navSignName} — ${s.isOddNav ? 'odd' : 'even'}</span></div>
+      <div class="kv"><span>Dispositor / Jupiter</span><span>${s.dispositorDignity.label} / ${s.jupiterDignity.label}</span></div>
+      ${s.notes.map((n) => `<p class="small bhava-char-item">• ${esc(n)}</p>`).join('')}
+    </div>`;
+  }
+  function progParasharaBlock(par) {
+    const dv = (d) => `<tr><td><b>${d.varga}</b></td><td>${d.fifthSignName}</td><td>${d.occupants.join(', ') || '—'}</td><td>${d.fifthLord} (${esc(d.lordDignity.label)})</td><td class="num">${d.score}</td></tr>`;
+    const fr = par.factors.map((f) => `<p class="small bhava-char-item">• ${esc(f)}</p>`).join('');
+    return `<div class="card">
+      <h3>Parāśara — 5th House (Putra Bhāva) across D1 · D9 · D7</h3>
+      <div style="margin:4px 0">${chip(par.verdict.label, par.verdict.cls)} <span class="muted small">${par.score}/100</span></div>
+      ${gaugePct('Parāśara progeny strength', par.score)}
+      <table><thead><tr><th>Chart</th><th>5th sign</th><th>Occupants</th><th>5th lord (dignity)</th><th class="num">Score</th></tr></thead>
+        <tbody>${dv(par.d1)}${dv(par.d9)}${dv(par.d7)}</tbody></table>
+      <div class="kv"><span>Putra-kāraka Jupiter</span><span>${esc(par.jupiterDignity.label)}, in H${par.jupiterHouse}${par.jupiterAfflictors.length ? ' — afflicted by ' + par.jupiterAfflictors.join(', ') : ''}</span></div>
+      <div class="kv"><span>5th lord (${par.fifthLord}) placement</span><span>H${par.fifthLordHouse}</span></div>
+      <div class="kv"><span>9th house (lineage / santati)</span><span>${par.ninth.score}/100</span></div>
+      <div style="margin-top:6px">${fr}</div>
+    </div>`;
+  }
+  function progKpBlock(k) {
+    const fr = k.factors.map((f) => `<p class="small bhava-char-item">• ${f}</p>`).join(''); // factors carry intentional <b> markup
+    const sig = k.significators.slice(0, 6).map((s) => `${s.planet} (${s.strength})`).join(', ');
+    return `<div class="card">
+      <h3>KP — 5th Cusp Sub-Lord (must signify 2 / 5 / 11)</h3>
+      <div style="margin:4px 0">${chip(k.verdict.label, k.verdict.cls)} — ${k.confidence}%</div>
+      ${gaugePct('KP progeny confidence', k.confidence)}
+      <div class="kv"><span>5th cusp sub-lord</span><span><b>${k.subLord}</b></span></div>
+      <div class="kv"><span>Signifies houses</span><span>${k.sigHouses.join(', ')}</span></div>
+      <div class="kv"><span>Progeny houses (2/5/11) matched</span><span>${k.matched.join(', ') || 'none'}</span></div>
+      <p class="small"><b>Progeny significators (2/5/11):</b> ${sig || '—'}</p>
+      <div style="margin-top:6px">${fr}</div>
+    </div>`;
+  }
+  function progTimingTable(t) {
+    const rows = (t.top || []).map((w) => `<tr><td>${Dasha.fmtDMY(w.startJd)} – ${Dasha.fmtDMY(w.endJd)}</td><td>${w.md}/${w.ad}/${w.pd}</td><td class="num">${fix(w.score, 1)}</td><td class="small muted">${esc((w.transitNotes || []).join('; ')) || '—'}</td></tr>`).join('');
+    return `<table><thead><tr><th>Window</th><th>MD/AD/PD</th><th class="num">Score</th><th>Transit support</th></tr></thead><tbody>${rows || '<tr><td colspan="4" class="muted small">No clear progeny-significator window found in range.</td></tr>'}</tbody></table>`;
+  }
+  function progPersonSection(an, name) {
+    const t = an.timing;
+    const near = t.nearest ? `${Dasha.fmtDMY(t.nearest.startJd)} – ${Dasha.fmtDMY(t.nearest.endJd)}` : '—';
+    return `
+      <div class="card"><h2>${esc(name)} — Progeny Detail</h2>
+        <div style="margin:4px 0">${chip(an.verdict.label, an.verdict.cls)} <span class="muted small">progeny index ${an.index}/100</span></div>
+        <div class="grid-2">${progSphutaCard(an.sphuta)}
+          <div class="card" style="margin:0">
+            <h3>Timing — Daśā + Transit</h3>
+            <div class="kv"><span>Nearest favourable window</span><span>${near}</span></div>
+            <div class="kv"><span>Period (MD/AD/PD)</span><span>${t.nearest ? `${t.nearest.md}/${t.nearest.ad}/${t.nearest.pd}` : '—'}</span></div>
+            ${t.nearest && (t.nearest.transitNotes || []).length ? `<p class="small muted">Transit: ${esc(t.nearest.transitNotes.join('; '))}</p>` : ''}
+            <p class="small muted">Childbirth fructifies in the daśā/bhukti of progeny significators (5th lord, Jupiter, KP 2/5/11 significators), reinforced by Jupiter transiting the 5th.</p>
+          </div>
+        </div>
+      </div>
+      ${progParasharaBlock(an.par)}
+      ${progKpBlock(an.kp)}
+      <div class="card"><h3>${esc(name)} — Strongest progeny windows (next 20 years)</h3>${progTimingTable(t)}</div>`;
+  }
+
+  function renderProgeny() {
+    const r = state.results; const p = r.progeny; const b = state.boy, g = state.girl;
+    const v = p.verdict;
+    const near = p.combinedNearest ? `${Dasha.fmtDMY(p.combinedNearest.startJd)} – ${Dasha.fmtDMY(p.combinedNearest.endJd)} (${p.combinedNearest.md}/${p.combinedNearest.ad}/${p.combinedNearest.pd})` : '—';
+    $('tab-progeny').innerHTML = `
+      <div class="card">
+        <h2>Progeny (Santāna) Analysis — ${esc(b.meta.name)} &amp; ${esc(g.meta.name)}</h2>
+        <div class="grid-3">
+          <div class="card" style="margin:0;text-align:center">
+            <div class="big-score">${p.index}<small>/100</small></div>
+            <div style="margin-top:8px">${chip(v.label, v.cls)}</div>
+            <div class="muted small" style="margin-top:6px">Combined Parāśara + KP + Beeja/Kṣetra</div>
+          </div>
+          <div class="card" style="margin:0">
+            ${gaugePct('Husband — Parāśara', p.boy.par.score)}
+            ${gaugePct('Wife — Parāśara', p.girl.par.score)}
+            ${gaugePct('Beeja / Kṣetra pair', p.pairSphuta)}
+          </div>
+          <div class="card" style="margin:0">
+            ${gaugePct('Husband — KP', p.boy.kp.confidence)}
+            ${gaugePct('Wife — KP', p.girl.kp.confidence)}
+            <div class="kv"><span>Likely first-child window</span><span>${near}</span></div>
+          </div>
+        </div>
+        ${p.notes.map((n) => `<p class="small bhava-char-item">• ${esc(n)}</p>`).join('')}
+        <p class="muted small">Progeny is judged from the 5th house (Putra Bhāva) in D1, D9 and D7 (Saptāṁśa), the putra-kāraka Jupiter,
+          the KP 5th cusp sub-lord, and the Beeja (husband) / Kṣetra (wife) Sphuṭas. Timing comes from the Vimśottari daśā of
+          progeny significators with Jupiter's transit support.</p>
+      </div>
+      <div class="card"><h2>Charts used — Husband (D1 · D9 · D7 · KP)</h2>${header(b)}${ChartDraw.renderQuad(b, b.meta.name)}</div>
+      <div class="card"><h2>Charts used — Wife (D1 · D9 · D7 · KP)</h2>${header(g)}${ChartDraw.renderQuad(g, g.meta.name)}</div>
+      ${progPersonSection(p.boy, b.meta.name + ' (Husband)')}
+      ${progPersonSection(p.girl, g.meta.name + ' (Wife)')}`;
+  }
+
+  function renderProgenyIndividual() {
+    const r = state.results; const p = r.progeny; const chart = r.chart;
+    const v = p.verdict; const t = p.timing;
+    const near = t.nearest ? `${Dasha.fmtDMY(t.nearest.startJd)} – ${Dasha.fmtDMY(t.nearest.endJd)}` : '—';
+    const sphLabel = p.gender === 'female' ? 'Kṣetra' : 'Beeja';
+    $('tab-progeny').innerHTML = `
+      <div class="card">
+        <h2>Progeny (Santāna) Analysis — ${esc(r.name)}</h2>
+        <div class="grid-3">
+          <div class="card" style="margin:0;text-align:center">
+            <div class="big-score">${p.index}<small>/100</small></div>
+            <div style="margin-top:8px">${chip(v.label, v.cls)}</div>
+            <div class="muted small" style="margin-top:6px">Parāśara + KP + ${sphLabel} Sphuṭa</div>
+          </div>
+          <div class="card" style="margin:0">
+            ${gaugePct('Parāśara 5th-house', p.par.score)}
+            ${gaugePct('KP 5th sub-lord', p.kp.confidence)}
+            ${gaugePct(sphLabel + ' Sphuṭa', p.sphuta.score)}
+          </div>
+          <div class="card" style="margin:0">
+            <div class="kv"><span>Nearest favourable window</span><span>${near}</span></div>
+            <div class="kv"><span>Period (MD/AD/PD)</span><span>${t.nearest ? `${t.nearest.md}/${t.nearest.ad}/${t.nearest.pd}` : '—'}</span></div>
+          </div>
+        </div>
+        <p class="muted small">Individual progeny prospects — the partner is not considered. The ${p.gender === 'female' ? 'Kṣetra (female fertility)' : 'Beeja (male potency)'} Sphuṭa is used for this native.</p>
+      </div>
+      <div class="card"><h2>Charts used — D1 · D9 · D7 · KP</h2>${header(chart)}${ChartDraw.renderQuad(chart, chart.meta.name)}</div>
+      ${progPersonSection(p, r.name)}`;
+  }
+
   /* ---------------- Report (PDF) ---------------- */
   function renderReport() {
     const r = state.results;
@@ -1235,8 +1372,9 @@
       ${section('8 · Transits (Gochara)', 'transit')}
       ${section('9 · Health Compatibility', 'health')}
       ${section('10 · Sarvashtakavarga (SAV)', 'sarvashtaka')}
+      ${section('11 · Progeny (Santāna)', 'progeny')}
 
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.7</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.8</p>
       <p class="dev-credit footer-credit">Developed by <b>Dr. Anil Sabaji</b> &nbsp;•&nbsp; Email: anilsabaji@gmail.com</p>
     `;
   }
@@ -1345,7 +1483,7 @@ body { padding: 24px; max-width: 1000px; margin: 0 auto; }
 <div class="report-meta">Generated ${esc(dateStr)} — Vedic Marriage Matching Module (BPHS &amp; KP)</div>
 <div id="report-content">${reportHtml}</div>
 <p class="footer-note" style="text-align:center;margin-top:24px;opacity:.7;font-size:11.5px">
-  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.7
+  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.8
 </p>
 <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>
 </body>

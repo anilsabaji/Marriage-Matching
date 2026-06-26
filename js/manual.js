@@ -176,7 +176,36 @@ const Manual = (function () {
             compatibility; both strong in the same marriage houses is highly favourable.</li>
       </ul>
 
-      <h3>11. References</h3>
+      <h3>12. Progeny / Santāna Analysis (<code>progeny.js</code>)</h3>
+      <p>The promise, denial and <b>timing of childbirth</b> are judged from three
+      independent methods, then combined into a 0–100 progeny index:</p>
+      <ul>
+        <li><b>Parāśara (45%).</b> The 5th house (Putra Bhāva) is assessed in <b>D1</b>
+            (Rāśi), <b>D9</b> (Navāṁśa) and <b>D7</b> (Saptāṁśa — the prime varga for
+            children, weighted highest), together with the putra-kāraka <b>Jupiter</b>
+            (dignity, afflictions, benefic support), the 5th lord's placement and the
+            9th house (lineage / santati). Saptāṁśa division: each sign is split into 7
+            parts of 4°17′; odd signs count from the same sign, even signs from the 7th.</li>
+        <li><b>KP (35%).</b> Progeny is "promised" when the <b>sub-lord of the 5th cusp</b>
+            is a significator of houses <b>2, 5 or 11</b>; signification of 1, 4 or 10
+            denies/obstructs and the 12th warns of loss. The 11th cusp sub-lord
+            (fulfilment of desire) is supporting.</li>
+        <li><b>Beeja &amp; Kṣetra Sphuṭa (20%).</b> The <b>Beeja Sphuṭa</b> (male "seed" =
+            Sun + Venus + Jupiter longitudes) should fall in an <b>odd</b> rāśi and odd
+            navāṁśa with a strong dispositor &amp; Jupiter; the <b>Kṣetra Sphuṭa</b>
+            (female "field" = Moon + Mars + Jupiter) should fall in an <b>even</b> rāśi and
+            even navāṁśa. In couple mode the husband's Beeja is paired with the wife's
+            Kṣetra.</li>
+      </ul>
+      <p><b>Timing.</b> Childbirth fructifies in the Vimśottari Mahā/Antar/Pratyantar
+      daśā of progeny significators (the 5th lord, Jupiter, occupants of the 5th, and KP
+      significators of 2/5/11), reinforced when Jupiter transits the 5th from the Lagna
+      or Moon, or the 5th-lord's sign. The module ranks the strongest windows over the
+      next 20 years and reports the nearest favourable period; in couple mode it also
+      gives a likely first-child window. Available for both <b>Couple</b> and
+      <b>Individual</b> analysis.</p>
+
+      <h3>13. References</h3>
       <ul>
         <li>Maharṣi Parāśara — <i>Bṛhat Parāśara Horā Śāstra</i> (BPHS).</li>
         <li>K. S. Krishnamurti — <i>Krishnamurti Paddhati</i> (Readers 1–6).</li>
