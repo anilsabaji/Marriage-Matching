@@ -237,6 +237,24 @@ const Timeline = (function () {
       weights: { boyPar: bPar, boyKp: bKp, girlPar: gPar, girlKp: gKp } };
   }
 
+  // Single-person dual commitment series (KP & Parāśara) with separation triggers.
+  function strengthSeriesSingle(chart, gender, fromJd, years, stepMonths) {
+    years = years || 20; stepMonths = stepMonths || 3;
+    const par = parasharaWeights(chart, gender), kp = kpWeights(chart, gender);
+    const sm = (typeof PlanetStrength !== 'undefined') ? PlanetStrength.map(chart) : {};
+    const sep = (typeof Separation !== 'undefined') ? Separation.analyze(chart, gender) : null;
+    const md = Dasha.mahadashas(chart, years + 130);
+    const series = [];
+    const totalM = years * 12; const MONTH = 30.436875;
+    for (let m = 0; m <= totalM; m += stepMonths) {
+      const jd = fromJd + m * MONTH;
+      const c = commitmentAt(chart, par, kp, sm, jd, md, sep);
+      const d = Dasha.jdToDate(jd);
+      series.push({ jd, m, year: d.getUTCFullYear(), label: Dasha.fmtYM(jd), kp: c.kp, par: c.par, sep: c.sepPenalty, sepTrig: c.triggered });
+    }
+    return { series, strength: sm, separation: sep };
+  }
+
   // Evenly-sampled commitment-strength time series for both partners.
   // Returns array of { jd, m (months from start), year (calendar), label,
   // boy (0-100), girl (0-100) } sampled every `stepMonths`.
@@ -351,7 +369,7 @@ const Timeline = (function () {
 
   return {
     marriagePlanets, stressPlanets, marriageWindow,
-    coupleMarriageWindow, relationshipForecast, strengthSeries, strengthSeriesDual,
+    coupleMarriageWindow, relationshipForecast, strengthSeries, strengthSeriesDual, strengthSeriesSingle,
     parasharaWeights, kpWeights, commitmentAt, scoreAt, band, clamp,
   };
 })();

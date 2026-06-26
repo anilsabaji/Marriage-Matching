@@ -306,7 +306,59 @@ const ChartDraw = (function () {
     return svg;
   }
 
-  return { svgChart, d1Chart, d9Chart, kpChart, navamsaSign, renderTriple, relationshipPipe, relationshipPipeDual, SIGN_ABBR, PLANET_ABBR, SI_GRID, SIGN_POS };
+  return { svgChart, d1Chart, d9Chart, kpChart, navamsaSign, renderTriple, relationshipPipe, relationshipPipeDual, singleCommitment, SIGN_ABBR, PLANET_ABBR, SI_GRID, SIGN_POS };
+
+  /* ======================================================================
+   * Single-person commitment graph: KP (amber) & Parāśara (green) marriage
+   * commitment over time, with red separation-trigger windows.
+   * series: [{ m, year, kp, par, sep, sepTrig }]
+   * ==================================================================== */
+  function singleCommitment(series, opts) {
+    opts = opts || {};
+    const name = escSvg(opts.name || 'Native');
+    const KPc = '#f5b301', PARc = '#2bbf6a';
+    const W = 1040, H = 320, padL = 54, padR = 18, padT = 34, padB = 50;
+    const plotW = W - padL - padR, plotH = H - padT - padB;
+    const baseY = padT + plotH;
+    const n = series.length;
+    if (n < 2) return '<div class="muted small">Not enough data to plot.</div>';
+    const totalM = series[n - 1].m || 1;
+    const xOfM = (m) => padL + (m / totalM) * plotW;
+    const x = (i) => xOfM(series[i].m);
+    const y = (v) => baseY - (v / 100) * plotH;
+    const line = (key) => series.map((s, i) => `${x(i).toFixed(1)},${y(s[key]).toFixed(1)}`).join(' ');
+
+    let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet" class="pipe-svg" xmlns="http://www.w3.org/2000/svg">`;
+    [25, 50, 75].forEach((v) => {
+      svg += `<line x1="${padL}" y1="${y(v).toFixed(1)}" x2="${padL + plotW}" y2="${y(v).toFixed(1)}" stroke="#2a3060" stroke-width="0.5" stroke-dasharray="3 4"/>`;
+      svg += `<text x="${(padL - 6).toFixed(1)}" y="${(y(v) + 3).toFixed(1)}" text-anchor="end" class="pipe-axis-sub">${v}</text>`;
+    });
+    svg += `<line x1="${padL}" y1="${baseY}" x2="${padL + plotW}" y2="${baseY}" stroke="#e7e9ee" stroke-width="1.2"/>`;
+    const baseYear = series[0].year, years = Math.round(totalM / 12), stepY = years > 12 ? 2 : 1;
+    for (let yr = 0; yr <= years; yr += stepY) {
+      const xm = xOfM(yr * 12);
+      svg += `<line x1="${xm.toFixed(1)}" y1="${padT}" x2="${xm.toFixed(1)}" y2="${baseY}" stroke="#222845" stroke-width="0.5"/>`;
+      svg += `<text x="${xm.toFixed(1)}" y="${(baseY + 16).toFixed(1)}" text-anchor="middle" class="pipe-axis">${baseYear + yr}</text>`;
+    }
+    let runStart = null;
+    for (let i = 0; i < n; i++) {
+      const hot = series[i].sepTrig || (series[i].sep || 0) > 1.2;
+      if (hot && runStart === null) runStart = i;
+      if ((!hot || i === n - 1) && runStart !== null) {
+        const x1 = x(runStart), x2 = x(hot ? i : i - 1);
+        svg += `<rect x="${x1.toFixed(1)}" y="${(baseY - 4).toFixed(1)}" width="${Math.max(2.5, x2 - x1).toFixed(1)}" height="8" rx="2" fill="#ff4d4d" opacity="0.85"><title>Separation / divorce / widowhood trigger window</title></rect>`;
+        runStart = null;
+      }
+    }
+    svg += `<polyline points="${line('par')}" fill="none" stroke="${PARc}" stroke-width="2.2" stroke-linejoin="round"/>`;
+    svg += `<polyline points="${line('kp')}" fill="none" stroke="${KPc}" stroke-width="2.2" stroke-linejoin="round"/>`;
+    svg += `<rect x="${padL + 4}" y="${padT - 6}" width="11" height="11" rx="2" fill="${KPc}"/><text x="${padL + 19}" y="${padT + 3}" class="pipe-axis">KP</text>`;
+    svg += `<rect x="${padL + 52}" y="${padT - 6}" width="11" height="11" rx="2" fill="${PARc}"/><text x="${padL + 67}" y="${padT + 3}" class="pipe-axis">Parāśara</text>`;
+    svg += `<rect x="${padL + 138}" y="${padT - 6}" width="11" height="11" rx="2" fill="#ff4d4d"/><text x="${padL + 153}" y="${padT + 3}" class="pipe-axis">Separation trigger</text>`;
+    svg += `<text x="${padL + plotW}" y="${(padT - 2).toFixed(1)}" text-anchor="end" class="pipe-side">${name}</text>`;
+    svg += '</svg>';
+    return svg;
+  }
 
   /* ======================================================================
    * Dual-method relationship pipe: two values per partner in two colours
