@@ -381,7 +381,7 @@
       ${section('9 · Health', 'health')}
       ${section('10 · Sarvashtakavarga', 'sarvashtaka')}
       ${section('11 · Progeny (Santāna)', 'progeny')}
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.10</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.11</p>
       <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>`;
   }
 
@@ -1374,7 +1374,7 @@
       ${section('10 · Sarvashtakavarga (SAV)', 'sarvashtaka')}
       ${section('11 · Progeny (Santāna)', 'progeny')}
 
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.10</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.11</p>
       <p class="dev-credit footer-credit">Developed by <b>Dr. Anil Sabaji</b> &nbsp;•&nbsp; Email: anilsabaji@gmail.com</p>
     `;
   }
@@ -1415,7 +1415,7 @@
   let _reportCss = null;
   async function getReportCss() {
     if (_reportCss != null) return _reportCss;
-    try { const res = await fetch('css/styles.css?v=23'); _reportCss = res.ok ? await res.text() : ''; }
+    try { const res = await fetch('css/styles.css?v=24'); _reportCss = res.ok ? await res.text() : ''; }
     catch (e) { _reportCss = ''; }
     return _reportCss;
   }
@@ -1423,10 +1423,11 @@
   /* Build a FULLY self-contained report document (CSS inlined, light printable
      theme baked in). Used by both "Download HTML" and the print pipeline so the
      output can never be blank / white-on-white. */
-  function buildReportDoc(css) {
+  function buildReportDoc(css, opts) {
     const info = reportInfo();
     const reportHtml = $('report-content').innerHTML;
     const dateStr = nowDMY();
+    const pdfMode = !!(opts && opts.pdf);
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1469,6 +1470,7 @@ svg, .chart-svg, .pipe-svg { max-width:100% !important; height:auto !important; 
   .report-section { page-break-before: always; }
   .report-cover { page-break-after: always; }
 }
+${pdfMode ? '/* PDF raster mode: no body padding (margins come from html2pdf); fill width so html2canvas output is symmetric & centred. */ body{padding:0 !important;margin:0 !important;max-width:100% !important;width:100% !important;} #report-content{width:100% !important;max-width:100% !important;margin:0 !important;}' : ''}
 </style>
 </head>
 <body class="pdf-render">
@@ -1480,7 +1482,7 @@ svg, .chart-svg, .pipe-svg { max-width:100% !important; height:auto !important; 
 <div class="report-meta">Generated ${esc(dateStr)} — Vedic Marriage Matching Module (BPHS &amp; KP)</div>
 <div id="report-content">${reportHtml}</div>
 <p class="footer-note" style="text-align:center;margin-top:24px;opacity:.7;font-size:11.5px">
-  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.10
+  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.11
 </p>
 <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>
 </body>
@@ -1511,6 +1513,36 @@ svg, .chart-svg, .pipe-svg { max-width:100% !important; height:auto !important; 
     setTimeout(fire, 700); // fallback in case onload doesn't fire
   }
 
+  /* Render the PDF from a fixed-width (A4-proportioned) offscreen iframe of the
+     self-contained report, with symmetric html2pdf margins. This guarantees the
+     output is centred and fits the page width (no left/right overflow). */
+  async function downloadPdfNow() {
+    const name = `${reportInfo().fileBase}.pdf`;
+    if (!window.html2pdf) { printReportNow(); return; }
+    const css = await getReportCss();
+    const doc = buildReportDoc(css, { pdf: true });
+    const iframe = document.createElement('iframe');
+    // 794px ≈ A4 width at 96dpi → keeps the capture in portrait proportions.
+    iframe.style.cssText = 'position:fixed;left:-10000px;top:0;width:794px;height:1123px;border:0;background:#fff;';
+    document.body.appendChild(iframe);
+    const idoc = iframe.contentWindow.document;
+    idoc.open(); idoc.write(doc); idoc.close();
+    let started = false;
+    const cleanup = () => { setTimeout(() => { if (iframe.parentNode) iframe.parentNode.removeChild(iframe); }, 400); };
+    const run = () => {
+      if (started) return; started = true;
+      window.html2pdf().set({
+        margin: 10, filename: name, // uniform 10mm margins on all sides → centred
+        image: { type: 'jpeg', quality: 0.95 },
+        html2canvas: { scale: 1.7, backgroundColor: '#ffffff', useCORS: true, logging: false, width: 794, windowWidth: 794 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['css', 'legacy'], before: '.report-section' },
+      }).from(idoc.body).save().then(cleanup).catch((e) => { console.error('PDF error', e); cleanup(); printReportNow(); });
+    };
+    iframe.onload = () => setTimeout(run, 350);
+    setTimeout(run, 800); // fallback if onload doesn't fire
+  }
+
   $('printReport').addEventListener('click', () => {
     if (!state.results) { alert('Please generate a report first (Tab 1).'); return; }
     try { printReportNow(); }
@@ -1518,22 +1550,8 @@ svg, .chart-svg, .pipe-svg { max-width:100% !important; height:auto !important; 
   });
   $('downloadPdf').addEventListener('click', () => {
     if (!state.results) { alert('Please generate a report first (Tab 1).'); return; }
-    const el = $('report-content');
-    const name = `${reportInfo().fileBase}.pdf`;
-    if (window.html2pdf) {
-      // Apply light printable theme so output isn't blank (white-on-white)
-      el.classList.add('pdf-render');
-      const restore = () => el.classList.remove('pdf-render');
-      window.html2pdf().set({
-        margin: [8, 8, 8, 8], filename: name,
-        image: { type: 'jpeg', quality: 0.95 },
-        html2canvas: { scale: 1.4, backgroundColor: '#ffffff', useCORS: true, logging: false, windowWidth: 1100 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        pagebreak: { mode: ['css', 'legacy'], before: '.report-section' },
-      }).from(el).save().then(restore).catch((e) => { restore(); console.error('PDF error', e); printReportNow(); });
-    } else {
-      printReportNow();
-    }
+    try { downloadPdfNow(); }
+    catch (e) { console.error('PDF error', e); printReportNow(); }
   });
 
   $('downloadHtml').addEventListener('click', async () => {
