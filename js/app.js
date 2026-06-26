@@ -381,7 +381,7 @@
       ${section('9 · Health', 'health')}
       ${section('10 · Sarvashtakavarga', 'sarvashtaka')}
       ${section('11 · Progeny (Santāna)', 'progeny')}
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.8</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.9</p>
       <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>`;
   }
 
@@ -1374,7 +1374,7 @@
       ${section('10 · Sarvashtakavarga (SAV)', 'sarvashtaka')}
       ${section('11 · Progeny (Santāna)', 'progeny')}
 
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.8</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.9</p>
       <p class="dev-credit footer-credit">Developed by <b>Dr. Anil Sabaji</b> &nbsp;•&nbsp; Email: anilsabaji@gmail.com</p>
     `;
   }
@@ -1411,19 +1411,105 @@
     };
   }
 
+  /* Cache the stylesheet so report export & print are standalone and reliable. */
+  let _reportCss = null;
+  async function getReportCss() {
+    if (_reportCss != null) return _reportCss;
+    try { const res = await fetch('css/styles.css?v=22'); _reportCss = res.ok ? await res.text() : ''; }
+    catch (e) { _reportCss = ''; }
+    return _reportCss;
+  }
+
+  /* Build a FULLY self-contained report document (CSS inlined, light printable
+     theme baked in). Used by both "Download HTML" and the print pipeline so the
+     output can never be blank / white-on-white. */
+  function buildReportDoc(css) {
+    const info = reportInfo();
+    const reportHtml = $('report-content').innerHTML;
+    const dateStr = nowDMY();
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>${info.title}</title>
+<style>
+${css}
+/* ---- standalone, light, printable theme so nothing is ever blank ---- */
+html, body { background:#ffffff !important; }
+body { color:#1a1a1a !important; padding: 24px; max-width: 1000px; margin: 0 auto; }
+body * { color:#1a1a1a; }
+.tab-panel, #report-content { display: block !important; }
+.report-meta { color:#555 !important; font-size: 12px; margin-bottom: 18px; text-align:center; }
+.card, .chart-box, fieldset, .callout, .bhava-col, .bhava-result, .bhava-what-indicates {
+  background:#fff !important; border-color:#ccc !important; box-shadow:none !important; }
+.card::before, fieldset::after { display:none !important; }
+h1, h2, h3, .big-score, .card h2 {
+  -webkit-text-fill-color: initial !important; background:none !important; color:#5b3fb0 !important; }
+.report-section-title {
+  background:#5b3fb0 !important; color:#fff !important; -webkit-text-fill-color:#fff !important;
+  -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+.muted, .small.muted, .footer-note { color:#555 !important; }
+table { width:100% !important; max-width:100% !important; table-layout:fixed; font-size:9px; }
+th, td { word-break:break-word; overflow-wrap:anywhere; white-space:normal; padding:3px 4px; border-color:#ccc; }
+th { color:#333 !important; background:#f0f0f0 !important; }
+svg, .chart-svg, .pipe-svg { max-width:100% !important; height:auto !important; }
+.chart-svg .chart-planet { fill:#111 !important; } .chart-svg .chart-sign { fill:#0a7a52 !important; }
+.chart-svg .chart-title { fill:#5b3fb0 !important; }
+.chip { border:1px solid #999 !important; background:#f3f3f3 !important; }
+.gauge .fill, .report-section-title, .bhava-sign-badge { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+@page { size: A4 portrait; margin: 10mm; }
+@media print {
+  body { padding:0; }
+  .report-section { page-break-before: always; }
+  .report-cover { page-break-after: always; }
+}
+</style>
+</head>
+<body class="pdf-render">
+<header class="app-header" style="border-radius:14px;margin-bottom:18px;background:#fff">
+  <h1><span class="om">&#x0950;</span> Vedic Marriage Matching Report</h1>
+  <p>${info.subtitle}</p>
+  <p class="dev-credit">By <b>Dr. Anil Sabaji</b>, Email: <a href="mailto:anilsabaji@gmail.com">anilsabaji@gmail.com</a></p>
+</header>
+<div class="report-meta">Generated ${esc(dateStr)} — Vedic Marriage Matching Module (BPHS &amp; KP)</div>
+<div id="report-content">${reportHtml}</div>
+<p class="footer-note" style="text-align:center;margin-top:24px;opacity:.7;font-size:11.5px">
+  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.9
+</p>
+<p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>
+</body>
+</html>`;
+  }
+
+  /* Print the report from an isolated hidden iframe with the CSS inlined. This
+     avoids the fragile @media-print / body-class interactions that produced
+     blank pages, and prints ONLY the report. */
+  async function printReportNow() {
+    const css = await getReportCss();
+    const doc = buildReportDoc(css);
+    const iframe = document.createElement('iframe');
+    iframe.setAttribute('aria-hidden', 'true');
+    iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+    document.body.appendChild(iframe);
+    const win = iframe.contentWindow;
+    const idoc = win.document;
+    idoc.open(); idoc.write(doc); idoc.close();
+    let done = false;
+    const fire = () => {
+      if (done) return; done = true;
+      try { win.focus(); win.print(); } catch (e) { console.error('print error', e); }
+      setTimeout(() => { if (iframe.parentNode) iframe.parentNode.removeChild(iframe); }, 2000);
+    };
+    // CSS is inlined and all charts are inline SVG, so layout is ready quickly.
+    iframe.onload = () => setTimeout(fire, 300);
+    setTimeout(fire, 700); // fallback in case onload doesn't fire
+  }
+
   $('printReport').addEventListener('click', () => {
     if (!state.results) { alert('Please generate a report first (Tab 1).'); return; }
-    const el = $('report-content');
-    document.body.classList.add('print-report');
-    el.classList.add('pdf-render');
-    const cleanup = () => {
-      document.body.classList.remove('print-report');
-      el.classList.remove('pdf-render');
-      window.removeEventListener('afterprint', cleanup);
-    };
-    window.addEventListener('afterprint', cleanup);
-    setTimeout(() => { window.print(); }, 60);
-    setTimeout(cleanup, 4000);
+    try { printReportNow(); }
+    catch (e) { console.error(e); window.print(); }
   });
   $('downloadPdf').addEventListener('click', () => {
     if (!state.results) { alert('Please generate a report first (Tab 1).'); return; }
@@ -1436,59 +1522,20 @@
       window.html2pdf().set({
         margin: [8, 8, 8, 8], filename: name,
         image: { type: 'jpeg', quality: 0.95 },
-        html2canvas: { scale: 1.6, backgroundColor: '#ffffff', useCORS: true, logging: false, windowWidth: 1100 },
+        html2canvas: { scale: 1.4, backgroundColor: '#ffffff', useCORS: true, logging: false, windowWidth: 1100 },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
         pagebreak: { mode: ['css', 'legacy'], before: '.report-section' },
-      }).from(el).save().then(restore).catch((e) => { restore(); console.error('PDF error', e); alert('PDF generation had an issue; try "Open print dialog" or "Download HTML" instead.'); });
+      }).from(el).save().then(restore).catch((e) => { restore(); console.error('PDF error', e); printReportNow(); });
     } else {
-      window.print();
+      printReportNow();
     }
   });
 
   $('downloadHtml').addEventListener('click', async () => {
     if (!state.results) { alert('Please generate a report first (Tab 1).'); return; }
-    const reportHtml = $('report-content').innerHTML;
-    // Try to inline the stylesheet so the file renders standalone/offline
-    let css = '';
-    try {
-      const res = await fetch('css/styles.css');
-      if (res.ok) css = await res.text();
-    } catch (e) { /* fallback to minimal inline styles below */ }
-
-    const info = reportInfo();
-    const dateStr = nowDMY();
-    const fileName = `${info.fileBase}.html`;
-
-    const doc = `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>${info.title}</title>
-<style>
-${css}
-/* standalone overrides so the report is readable on its own */
-body { padding: 24px; max-width: 1000px; margin: 0 auto; }
-.tab-panel, #report-content { display: block !important; }
-.report-meta { color: var(--muted, #9aa3b2); font-size: 12px; margin-bottom: 18px; text-align:center; }
-@media print { body { background:#fff; color:#111; } }
-</style>
-</head>
-<body>
-<header class="app-header" style="border-radius:14px;margin-bottom:18px">
-  <h1><span class="om">&#x0950;</span> Vedic Marriage Matching Report</h1>
-  <p>${info.subtitle}</p>
-  <p class="dev-credit">By <b>Dr. Anil Sabaji</b>, Email: <a href="mailto:anilsabaji@gmail.com">anilsabaji@gmail.com</a></p>
-</header>
-<div class="report-meta">Generated ${esc(dateStr)} — Vedic Marriage Matching Module (BPHS &amp; KP)</div>
-<div id="report-content">${reportHtml}</div>
-<p class="footer-note" style="text-align:center;margin-top:24px;opacity:.7;font-size:11.5px">
-  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.8
-</p>
-<p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>
-</body>
-</html>`;
-
+    const css = await getReportCss();
+    const doc = buildReportDoc(css);
+    const fileName = `${reportInfo().fileBase}.html`;
     const blob = new Blob([doc], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

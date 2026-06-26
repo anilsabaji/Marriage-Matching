@@ -51,12 +51,25 @@ try { window.document.getElementById('downloadHtml').click(); }
 catch (e) { console.error('FAIL downloadHtml threw:', e.message); process.exit(1); }
 // allow async handler to run
 setTimeout(() => {
-  // Trigger Download PDF (falls back to print since no html2pdf)
+  // Trigger Download PDF (falls back to iframe print since no html2pdf)
   try { window.document.getElementById('downloadPdf').click(); }
   catch (e) { console.error('FAIL downloadPdf threw:', e.message); process.exit(1); }
-  // Trigger print report
+  // Trigger print report (iframe-based)
   try { window.document.getElementById('printReport').click(); }
   catch (e) { console.error('FAIL printReport threw:', e.message); process.exit(1); }
-  console.log('\nINDIVIDUAL DOWNLOAD HANDLERS OK (no crash)');
-  process.exit(0);
+  // Give the async print pipeline a moment to build the iframe document
+  setTimeout(() => {
+    const frames = window.document.querySelectorAll('iframe');
+    let ok = false;
+    frames.forEach((f) => {
+      try {
+        const html = f.contentWindow.document.documentElement.innerHTML || '';
+        if (html.includes('report-content') && html.includes('Build v5.9') && html.length > 5000) ok = true;
+      } catch (e) { /* ignore */ }
+    });
+    if (!ok) { console.error('FAIL: print iframe did not contain a populated report document'); process.exit(1); }
+    console.log('OK   print pipeline built a populated, self-contained report iframe (non-blank)');
+    console.log('\nINDIVIDUAL DOWNLOAD HANDLERS OK (no crash)');
+    process.exit(0);
+  }, 150);
 }, 100);
