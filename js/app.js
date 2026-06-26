@@ -64,6 +64,31 @@
     set('g_h', 14); set('g_min', 15); set('g_tz', 5.5); set('g_lat', 28.61); set('g_lon', 77.21); set('g_place', 'New Delhi, India');
   });
 
+  /* ---------------- mode (Couple / Individual) ---------------- */
+  state.mode = 'couple';
+  state.who = 'boy';
+  function applyModeUI() {
+    const boyFs = document.querySelector('fieldset.boy');
+    const girlFs = document.querySelector('fieldset.girl');
+    const whoSeg = $('whoSeg');
+    if (state.mode === 'couple') {
+      if (whoSeg) whoSeg.style.display = 'none';
+      [boyFs, girlFs].forEach((f) => { if (f) { f.disabled = false; f.classList.remove('fs-disabled'); } });
+    } else {
+      if (whoSeg) whoSeg.style.display = '';
+      const boyActive = state.who === 'boy';
+      if (boyFs) { boyFs.disabled = !boyActive; boyFs.classList.toggle('fs-disabled', !boyActive); }
+      if (girlFs) { girlFs.disabled = boyActive; girlFs.classList.toggle('fs-disabled', boyActive); }
+    }
+    document.querySelectorAll('#modeSeg .seg-btn').forEach((b) => b.classList.toggle('active', b.dataset.mode === state.mode));
+    document.querySelectorAll('#whoSeg .seg-btn').forEach((b) => b.classList.toggle('active', b.dataset.who === state.who));
+  }
+  const _modeSeg = $('modeSeg');
+  if (_modeSeg) _modeSeg.addEventListener('click', (e) => { const b = e.target.closest('.seg-btn'); if (!b) return; state.mode = b.dataset.mode; applyModeUI(); });
+  const _whoSeg = $('whoSeg');
+  if (_whoSeg) _whoSeg.addEventListener('click', (e) => { const b = e.target.closest('.seg-btn'); if (!b) return; state.who = b.dataset.who; applyModeUI(); });
+  applyModeUI();
+
   $('matchForm').addEventListener('submit', (e) => {
     e.preventDefault();
     try {
@@ -77,13 +102,15 @@
 
   /* ---------------- generate ---------------- */
   function generate() {
+    const today = new Date();
+    state.fromJd = Astro.julianDay(today.getUTCFullYear(), today.getUTCMonth() + 1, today.getUTCDate(), 0);
+    state.fcFromJd = state.fromJd; state.fcYears = 20;
+    if (state.mode === 'individual') { generateIndividual(); return; }
+
     const bi = readInput('b_'); const gi = readInput('g_');
     const boy = Astro.buildChart(bi); boy.meta = bi;
     const girl = Astro.buildChart(gi); girl.meta = gi;
     state.boy = boy; state.girl = girl;
-
-    const today = new Date();
-    state.fromJd = Astro.julianDay(today.getUTCFullYear(), today.getUTCMonth() + 1, today.getUTCDate(), 0);
 
     const r = {};
     r.koota = Koota.fullMatch(boy, girl);
@@ -117,6 +144,240 @@
     safeRender(renderHealth, 'Health');
     safeRender(renderSarvashtaka, 'Sarvashtaka');
     safeRender(renderReport, 'Report');
+  }
+
+  /* ================= INDIVIDUAL (single-person) analysis ================= */
+  function generateIndividual() {
+    const who = state.who;
+    const gender = who === 'boy' ? 'male' : 'female';
+    const input = readInput(who === 'boy' ? 'b_' : 'g_');
+    const chart = Astro.buildChart(input); chart.meta = input;
+    state.boy = who === 'boy' ? chart : null;
+    state.girl = who === 'girl' ? chart : null;
+    state.subject = chart; state.subjectGender = gender;
+    state.subjectRole = who === 'boy' ? 'Groom' : 'Bride';
+    const name = `${input.name} (${state.subjectRole})`;
+
+    const r = { individual: true, who, gender, chart, name };
+    r.bphsRows = BPHS.analyzeAll(chart);
+    r.bphsIndex = BPHS.marriageIndex(chart, gender);
+    r.kp = KP.assess(chart);
+    r.health = Health.screen(chart);
+    r.kuja = KujaDosha.analyze(chart);
+    r.separation = Separation.analyze(chart, gender);
+    r.window = Timeline.marriageWindow(chart, gender, state.fromJd);
+    r.single = Timeline.strengthSeriesSingle(chart, gender, state.fromJd, 20, 3);
+    r.transit = Transit.summary(chart, state.fromJd, 20);
+    state.results = r;
+
+    const SR = (fn, n) => { try { fn(); } catch (e) { console.warn(n + ' (indiv) render error:', e); } };
+    SR(renderSummaryIndividual, 'Summary');
+    SR(() => { $('tab-charts').innerHTML = `<div class="card"><h2>${esc(name)} — D1 / D9 / KP Charts</h2>${header(chart)}${ChartDraw.renderTriple(chart, input.name)}</div><div class="card"><h2>Planetary Positions</h2>${header(chart)}${planetTable(chart)}</div><div class="card"><h3>How to read this</h3><p class="small muted">Sidereal (Lahiri) Rāśi positions; KP chart uses Placidus + ${esc(chart.kp.ayanamsaName)} ayanamsa.</p></div>`; }, 'Charts');
+    SR(renderBhavaIndividual, 'Bhava');
+    SR(renderBPHSIndividual, 'BPHS');
+    SR(renderKPIndividual, 'KP');
+    SR(() => { $('tab-koota').innerHTML = `<div class="card"><h2>Koota Matching</h2><div class="callout">Koota (Guna Milan) compares <b>two</b> charts, so it is not applicable to an individual analysis. The native's Moon is shown for reference.</div><div class="kv"><span>Moon</span><span>${chart.planets.Moon.signName} — ${chart.planets.Moon.nak} (pada ${chart.planets.Moon.pada})</span></div></div>`; }, 'Koota');
+    SR(renderKujaIndividual, 'Kuja');
+    SR(renderTimingIndividual, 'Timing');
+    SR(renderForecastIndividual, 'Forecast');
+    SR(() => { $('tab-transit').innerHTML = `<div class="card"><h2>Gochara (Transit) Outlook — ${esc(name)}</h2>${header(chart)}${transitTable(r.transit)}</div>`; }, 'Transit');
+    SR(renderHealthIndividual, 'Health');
+    SR(renderSavIndividual, 'Sarvashtaka');
+    SR(renderReportIndividual, 'Report');
+  }
+
+  function renderSummaryIndividual() {
+    const r = state.results; const idx = r.bphsIndex.index; const v = BPHS.verdict(idx);
+    const near = (r.window && r.window.nearest) ? `${Dasha.fmtDMY(r.window.nearest.startJd)} – ${Dasha.fmtDMY(r.window.nearest.endJd)}` : '—';
+    $('summaryCard').style.display = 'block';
+    $('summaryContent').innerHTML = `
+      <div class="grid-3">
+        <div class="card" style="margin:0;text-align:center">
+          <div class="big-score">${idx}<small>/100</small></div>
+          <div style="margin-top:8px">${chip(v.label, v.cls)}</div>
+          <div class="muted small" style="margin-top:6px">${esc(r.name)} — individual marriage prospects (BPHS)</div>
+        </div>
+        <div class="card" style="margin:0">
+          ${gaugePct('KP marriage promise', r.kp.promise.confidence)}
+          ${gaugePct('Health (overall)', r.health.overall)}
+          ${gaugePct('Kuja Dosha (net)', r.kuja.netIntensity, r.kuja.netIntensity >= 22 ? 'bad' : (r.kuja.netIntensity >= 12 ? 'mid' : 'good'))}
+        </div>
+        <div class="card" style="margin:0">
+          ${gaugePct('Separation / Divorce risk', r.separation.overallRisk, r.separation.overallRisk >= 50 ? 'bad' : (r.separation.overallRisk >= 30 ? 'mid' : 'good'))}
+          <div class="kv"><span>Nearest marriage window</span><span>${near}</span></div>
+        </div>
+      </div>
+      <p class="muted small">Individual analysis — the partner is not considered. Use the tabs for the native's house study,
+        BPHS &amp; KP marriage prospects, dasha/transit timing, Kuja dosha, separation promise and health.</p>`;
+  }
+
+  function renderBhavaIndividual() {
+    const r = state.results; const chart = r.chart;
+    let cards = '';
+    for (let h = 1; h <= 12; h++) {
+      const it = BhavaIndications.interpretHouse(h, chart);
+      const vv = BPHS.verdict(it.score);
+      cards += `<div class="card bhava-house-card">
+        <div class="bhava-house-header"><h3>${esc(it.houseName)}</h3><div>${chip(vv.label, vv.cls)} <span class="muted small">${it.score}/100</span></div></div>
+        <div class="bhava-domain"><b>${esc(it.domain)}</b></div>
+        <div class="bhava-what-indicates"><p class="small muted" style="margin:6px 0 4px"><b>What this house indicates:</b></p><ul class="small muted">${it.generalIndicates.map((i) => `<li>${esc(i)}</li>`).join('')}</ul></div>
+        <div class="bhava-sign-info"><span class="bhava-sign-badge">${esc(it.signName)}</span><span class="muted small">Lord: <b>${it.lord}</b> in H${it.lordHouse} (${esc(it.lordDignity)})</span></div>
+        <div class="bhava-chars">${it.characteristics.map((c) => `<p class="small bhava-char-item">• ${esc(c)}</p>`).join('')}</div>
+      </div>`;
+    }
+    $('tab-bhava').innerHTML = `<div class="card"><h2>House-by-House Significations — ${esc(r.name)}</h2>${header(chart)}<div class="kv"><span>Lagna</span><span>${chart.ascendant.signName} (${degStr(chart.ascendant.degInSign)})</span></div></div>${cards}`;
+  }
+
+  function renderBPHSIndividual() {
+    const r = state.results; const chart = r.chart; const mi = r.bphsIndex; const gender = r.gender;
+    let cards = '';
+    [7, 2, 11, 5, 8, 4, 12, 1, 9].forEach((h) => { cards += bphsHouseCard(r.name, bphsHouseDetail(chart, h, gender), h); });
+    const v = BPHS.verdict(mi.index);
+    $('tab-bphs').innerHTML = `
+      <div class="card"><h2>BPHS Marriage Assessment — ${esc(r.name)}</h2>${header(chart)}
+        <div style="margin:8px 0">${chip(v.label, v.cls)} &nbsp; Marriage index <b>${mi.index}/100</b></div>
+        ${gaugePct('Marriage index', mi.index)}
+        <div class="kv"><span>${gender === 'female' ? 'Jupiter (husband kāraka)' : 'Venus (love kāraka)'} dignity</span><span><b>${esc(gender === 'female' ? mi.jupiterDignity.label : mi.venusDignity.label)}</b></span></div>
+        <div class="kv"><span>7th-house afflictions</span><span>${mi.seventhAfflictions} planet(s)</span></div>
+      </div>
+      <div class="card"><h3>House-by-house (marriage-relevant), chart-specific</h3>${cards}</div>`;
+  }
+
+  function renderKPIndividual() {
+    const r = state.results; const b = r.kp; const chart = r.chart;
+    $('tab-kp').innerHTML = `
+      <div class="card"><h2>KP Assessment — ${esc(r.name)}</h2>
+        <div class="callout small">Placidus house system + <b>${esc(chart.kp.ayanamsaName)}</b> ayanamsa.</div>
+        <div class="kv"><span>7th cusp sub-lord</span><span><b>${b.promise.subLord}</b></span></div>
+        <div class="kv"><span>Signifies houses</span><span>${b.promise.sigHouses.join(', ')}</span></div>
+        <div class="kv"><span>Marriage houses (2/7/11)</span><span>${b.promise.matched.join(', ') || 'none'}</span></div>
+        <div style="margin-top:8px">${chip(b.verdict.label, b.verdict.cls)} — ${b.promise.confidence}%</div>
+        <h3>Marriage significators</h3><p class="small">${b.significators.slice(0, 6).map((s) => `${s.planet} (${s.strength})`).join(', ')}</p>
+      </div>
+      <div class="card"><h3>Cuspal sub-lords (2,7,11,5,8)</h3>${kpCuspTable(b)}</div>`;
+  }
+
+  function renderKujaIndividual() {
+    const r = state.results;
+    $('tab-kuja').innerHTML = `
+      <div class="card"><h2>Kuja (Maṅgala) Dosha — ${esc(r.name)}</h2>
+        <p class="small muted">Manglik = Mars in the 1st, 2nd, 4th, 7th, 8th or 12th from Lagna, Moon or Venus (D1). Cancellations (Bhaṅga) reduce the effective dosha.</p></div>
+      <div class="grid-2">${kujaPartnerCard(r.name, r.kuja)}</div>`;
+  }
+
+  function renderTimingIndividual() {
+    const r = state.results; const w = r.window;
+    let rows = '';
+    (w.topByScore || []).forEach((t) => { rows += `<tr><td>${Dasha.fmtDMY(t.startJd)} – ${Dasha.fmtDMY(t.endJd)}</td><td>${t.md}/${t.ad}/${t.pd}</td><td class="num">${fix(t.score, 1)}</td></tr>`; });
+    const near = (w.nearest) ? `${Dasha.fmtDMY(w.nearest.startJd)} – ${Dasha.fmtDMY(w.nearest.endJd)}` : '—';
+    $('tab-timing').innerHTML = `
+      <div class="card"><h2>Marriage Timing — ${esc(r.name)}</h2>
+        <div class="big-score" style="font-size:24px">${near}</div>
+        <p class="small muted">Nearest favourable marriage window from the native's Vimśottari dasha + supportive transits.</p></div>
+      <div class="card"><h3>Strongest marriage periods (next 20 years)</h3>
+        <table><thead><tr><th>Window</th><th>MD/AD/PD</th><th class="num">Score</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  }
+
+  function renderForecastIndividual() {
+    const r = state.results;
+    const ser = (r.single && r.single.series) || [];
+    const avg = (k) => ser.length ? Math.round(ser.reduce((a, s) => a + s[k], 0) / ser.length) : 0;
+    const fromJd = state.fcFromJd || state.fromJd; const yrs = state.fcYears || 20;
+    const startISO = Dasha.fmtISO(fromJd); const todayISO = Dasha.fmtISO(state.fromJd);
+    const isDefault = startISO === todayISO && yrs === 20;
+    const s = r.separation;
+    const facts = (arr, title) => arr.length ? `<p class="small" style="margin:4px 0"><b>${title}:</b></p>${arr.map((f) => `<p class="small bhava-char-item">• ${esc(f)}</p>`).join('')}` : `<p class="small muted">${title}: no significant indication.</p>`;
+    $('tab-forecast').innerHTML = `
+      <div class="card no-print"><h2>Forecast Timeframe (Backtesting)</h2>
+        <p class="small muted">Default is today + 20 years; pick a different start date to backtest.</p>
+        <div class="row-3" style="max-width:560px;align-items:end">
+          <div><label>Start date</label><input type="date" id="fcStart" value="${startISO}" /></div>
+          <div><label>Years</label><input type="number" id="fcYears" min="1" max="60" value="${yrs}" /></div>
+          <div><button class="btn" id="fcUpdate" type="button">Update</button></div>
+        </div>
+        <div class="small" style="margin-top:6px">${isDefault ? '<span class="chip good">Default timeframe</span>' : `<span class="chip mid">Custom / backtest</span> <span class="muted">from ${Dasha.fmtDMY(fromJd)} for ${yrs} years</span> &nbsp;<span class="preset-link" id="fcReset">Reset</span>`}</div>
+      </div>
+      <div class="card"><h2>Marriage Commitment Over ${yrs} Years — ${esc(r.name)}</h2>
+        <p class="small muted">The native's marriage commitment over time by <span class="kp-val">KP</span> and <span class="par-val">Parāśara</span>
+          significators of the running dasha lords (scaled by planetary strength). Red bands mark separation/divorce/widowhood
+          trigger windows (separative dasha + adverse transit).</p>
+        ${ChartDraw.singleCommitment(ser, { name: r.name })}
+        <div class="grid-2" style="margin-top:8px">
+          <div class="card" style="margin:0"><div class="kv"><span>KP commitment (avg)</span><span><span class="kp-val">${avg('kp')}</span>/100</span></div></div>
+          <div class="card" style="margin:0"><div class="kv"><span>Parāśara commitment (avg)</span><span><span class="par-val">${avg('par')}</span>/100</span></div></div>
+        </div>
+      </div>
+      <div class="card"><h2>Promise of Separation / Divorce / Widowhood</h2>
+        <div style="margin:4px 0 8px">${chip(s.verdict.label, s.verdict.cls)} <span class="muted small">overall risk ${s.overallRisk}/100</span></div>
+        ${gaugePct('Separation risk', s.separation)}${gaugePct('Divorce risk', s.divorce)}${gaugePct('Widowhood / spouse-longevity caution', s.widowhood)}
+        ${facts(s.d1Factors, 'D1 (Rāśi) indicators')}${facts(s.d9Factors, 'D9 (Navāṁśa) indicators')}${facts(s.kpFactors, 'KP indicators')}
+      </div>`;
+    const upd = $('fcUpdate'); if (upd) upd.addEventListener('click', updateForecastTimeframe);
+    const rst = $('fcReset'); if (rst) rst.addEventListener('click', () => {
+      state.fcFromJd = state.fromJd; state.fcYears = 20;
+      r.single = Timeline.strengthSeriesSingle(r.chart, r.gender, state.fromJd, 20, 3);
+      renderForecastIndividual();
+    });
+  }
+
+  function renderHealthIndividual() {
+    const r = state.results; const h = r.health;
+    $('tab-health').innerHTML = `
+      <div class="card"><h2>Health Screener — ${esc(r.name)}</h2>
+        <p class="small muted">Astrological wellness indicators from the native's chart (not a medical diagnosis).</p></div>
+      <div class="grid-2">${healthCard(r.name, h)}</div>`;
+  }
+
+  function renderSavIndividual() {
+    const r = state.results; const chart = r.chart;
+    const hs = Sarvashtaka.houseSAV(chart); const ma = Sarvashtaka.marriageAnalysis(chart);
+    let mrows = '';
+    [7, 2, 11, 5, 8].forEach((h) => { const d = ma.marriageStrength[h]; mrows += `<tr><td><b>H${h}</b></td><td>${d.signName}</td><td class="num">${d.bindus}</td><td>${chip(d.quality.label, d.quality.cls)}</td></tr>`; });
+    let head = '<th>Planet</th>'; for (let h = 1; h <= 12; h++) head += `<th class="num">H${h}</th>`; head += '<th class="num">Tot</th>';
+    let grows = '';
+    Sarvashtaka.PLANETS_7.forEach((p) => { const row = hs.houseBavs[p]; const tot = row.reduce((a, b) => a + b, 0); grows += '<tr><td><b>' + p + '</b></td>' + row.map((v) => `<td class="num ${v >= 5 ? 'pass' : (v <= 2 ? 'fail' : '')}">${v}</td>`).join('') + `<td class="num"><b>${tot}</b></td></tr>`; });
+    grows += '<tr style="border-top:2px solid var(--border)"><td><b>SAV</b></td>' + hs.houses.map((h) => `<td class="num ${h.bindus >= 28 ? 'pass' : (h.bindus < 25 ? 'fail' : '')}"><b>${h.bindus}</b></td>`).join('') + `<td class="num"><b>${hs.total}</b></td></tr>`;
+    $('tab-sarvashtaka').innerHTML = `
+      <div class="card"><h2>Sarvashtakavarga — ${esc(r.name)}</h2><div class="kv"><span>Total SAV bindus</span><span><b>${hs.total}</b></span></div>
+        <h3>Marriage houses</h3><table><thead><tr><th>House</th><th>Sign</th><th class="num">Bindus</th><th>Quality</th></tr></thead><tbody>${mrows}</tbody></table></div>
+      <div class="card"><h3>Bhinnashtakavarga (BAV) grid</h3><table class="bav-table"><thead><tr>${head}</tr></thead><tbody>${grows}</tbody></table></div>`;
+  }
+
+  function renderReportIndividual() {
+    const r = state.results; const chart = r.chart;
+    const idx = r.bphsIndex.index; const v = BPHS.verdict(idx);
+    const grab = (id) => { const el = $('tab-' + id); return el ? el.innerHTML : ''; };
+    const section = (t, id) => `<div class="report-section"><h2 class="report-section-title">${esc(t)}</h2>${grab(id)}</div>`;
+    const near = (r.window && r.window.nearest) ? `${Dasha.fmtDMY(r.window.nearest.startJd)} – ${Dasha.fmtDMY(r.window.nearest.endJd)}` : '—';
+    $('report-content').innerHTML = `
+      <div class="card report-cover">
+        <h2 style="text-align:center">Individual Marriage Analysis</h2>
+        <p class="small muted" style="text-align:center">${esc(r.name)} — generated ${nowDMY()}</p>
+        <div style="text-align:center;margin:10px 0"><span class="big-score">${idx}<small>/100</small></span><br/>${chip(v.label, v.cls)}</div>
+        <table>
+          <tr><th>Module</th><th>Result</th></tr>
+          <tr><td>BPHS marriage index</td><td>${idx}/100 — ${v.label}</td></tr>
+          <tr><td>KP marriage promise</td><td>${r.kp.promise.confidence}% — ${r.kp.verdict.label}</td></tr>
+          <tr><td>Kuja Dosha (net)</td><td>${r.kuja.netIntensity}/100 — ${r.kuja.level.label}</td></tr>
+          <tr><td>Separation / Divorce risk</td><td>${r.separation.overallRisk}/100 — ${r.separation.verdict.label}</td></tr>
+          <tr><td>Health (overall)</td><td>${r.health.overall}/100</td></tr>
+          <tr><td>Nearest marriage window</td><td>${near}</td></tr>
+        </table>
+        <div class="card" style="margin-top:14px"><h3>Birth Data</h3>${header(chart)}</div>
+        <p class="dev-credit" style="margin-top:10px">Developed by <b>Dr. Anil Sabaji</b> &nbsp;•&nbsp; Email: anilsabaji@gmail.com</p>
+      </div>
+      ${section('1 · Charts (D1 / D9 / KP)', 'charts')}
+      ${section('2 · House Significations', 'bhava')}
+      ${section('3 · BPHS Assessment', 'bphs')}
+      ${section('4 · KP Assessment', 'kp')}
+      ${section('5 · Kuja (Maṅgala) Dosha', 'kuja')}
+      ${section('6 · Marriage Timing', 'timing')}
+      ${section('7 · Commitment &amp; Separation Forecast', 'forecast')}
+      ${section('8 · Transits (Gochara)', 'transit')}
+      ${section('9 · Health', 'health')}
+      ${section('10 · Sarvashtakavarga', 'sarvashtaka')}
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.6</p>
+      <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>`;
   }
 
   function overallScore() {
@@ -608,6 +869,11 @@
     }
     state.fcFromJd = fromJd;
     state.fcYears = yrs;
+    if (r.individual) {
+      try { r.single = Timeline.strengthSeriesSingle(r.chart, r.gender, fromJd, yrs, 3); } catch (e) { console.error('single recompute error', e); }
+      renderForecastIndividual();
+      return;
+    }
     try {
       r.strengthDual = Timeline.strengthSeriesDual(state.boy, state.girl, fromJd, yrs, 3);
       r.forecast = Timeline.relationshipForecast(state.boy, state.girl, fromJd, yrs);
@@ -970,7 +1236,7 @@
       ${section('9 · Health Compatibility', 'health')}
       ${section('10 · Sarvashtakavarga (SAV)', 'sarvashtaka')}
 
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.4</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.6</p>
       <p class="dev-credit footer-credit">Developed by <b>Dr. Anil Sabaji</b> &nbsp;•&nbsp; Email: anilsabaji@gmail.com</p>
     `;
   }
@@ -1057,7 +1323,7 @@ body { padding: 24px; max-width: 1000px; margin: 0 auto; }
 <div class="report-meta">Generated ${esc(dateStr)} — Vedic Marriage Matching Module (BPHS &amp; KP)</div>
 <div id="report-content">${reportHtml}</div>
 <p class="footer-note" style="text-align:center;margin-top:24px;opacity:.7;font-size:11.5px">
-  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.4
+  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.6
 </p>
 <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>
 </body>

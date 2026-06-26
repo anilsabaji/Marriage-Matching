@@ -8,7 +8,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <link rel="stylesheet" href="css/styles.css?v=17" />
+  <link rel="stylesheet" href="css/styles.css?v=19" />
   <!-- html2pdf for PDF export (graceful fallback to window.print) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" defer></script>
 </head>
@@ -45,6 +45,17 @@
     <section class="tab-panel active" id="tab-input">
       <div class="card">
         <h2>Enter Birth Details</h2>
+        <div class="mode-select">
+          <div class="seg" id="modeSeg">
+            <button type="button" class="seg-btn active" data-mode="couple">👫 Couple</button>
+            <button type="button" class="seg-btn" data-mode="individual">👤 Individual</button>
+          </div>
+          <div class="seg" id="whoSeg" style="display:none">
+            <span class="seg-label">Analyse:</span>
+            <button type="button" class="seg-btn active" data-who="boy">Boy (Groom)</button>
+            <button type="button" class="seg-btn" data-who="girl">Girl (Bride)</button>
+          </div>
+        </div>
         <p class="muted small">Provide accurate date, time and place (latitude &amp; east-longitude,
           and the time-zone offset in effect at birth). Accuracy of timing-based results depends on
           correct birth time. <span class="preset-link" id="loadSample">Load a sample couple</span></p>
@@ -136,26 +147,26 @@
       <div id="report-content"><div class="placeholder">Generate a report first (Tab 1), then return here to export.</div></div>
     </section>
 
-    <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations on a self-contained ephemeris — see the Technical Manual for accuracy notes. <span style="opacity:.4">Build v5.4</span></p>
+    <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations on a self-contained ephemeris — see the Technical Manual for accuracy notes. <span style="opacity:.4">Build v5.6</span></p>
     <p class="dev-credit footer-credit">Developed by <b>Dr. Anil Sabaji</b> &nbsp;•&nbsp; Email: <a href="mailto:anilsabaji@gmail.com">anilsabaji@gmail.com</a></p>
   </div>
 
-  <script src="js/astro-core.js?v=17"></script>
-  <script src="js/bphs.js?v=17"></script>
-  <script src="js/bhava-indications.js?v=17"></script>
-  <script src="js/kp.js?v=17"></script>
-  <script src="js/koota.js?v=17"></script>
-  <script src="js/dasha.js?v=17"></script>
-  <script src="js/transit.js?v=17"></script>
-  <script src="js/planet-strength.js?v=17"></script>
-  <script src="js/chart-draw.js?v=17"></script>
-  <script src="js/kuja.js?v=17"></script>
-  <script src="js/separation.js?v=17"></script>
-  <script src="js/timeline.js?v=17"></script>
-  <script src="js/health.js?v=17"></script>
-  <script src="js/sarvashtaka.js?v=17"></script>
-  <script src="js/geocity.js?v=17"></script>
-  <script src="js/manual.js?v=17"></script>
-  <script src="js/app.js?v=17"></script>
+  <script src="js/astro-core.js?v=19"></script>
+  <script src="js/bphs.js?v=19"></script>
+  <script src="js/bhava-indications.js?v=19"></script>
+  <script src="js/kp.js?v=19"></script>
+  <script src="js/koota.js?v=19"></script>
+  <script src="js/dasha.js?v=19"></script>
+  <script src="js/transit.js?v=19"></script>
+  <script src="js/planet-strength.js?v=19"></script>
+  <script src="js/chart-draw.js?v=19"></script>
+  <script src="js/kuja.js?v=19"></script>
+  <script src="js/separation.js?v=19"></script>
+  <script src="js/timeline.js?v=19"></script>
+  <script src="js/health.js?v=19"></script>
+  <script src="js/sarvashtaka.js?v=19"></script>
+  <script src="js/geocity.js?v=19"></script>
+  <script src="js/manual.js?v=19"></script>
+  <script src="js/app.js?v=19"></script>
 </body>
 </html>
