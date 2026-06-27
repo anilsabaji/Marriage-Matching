@@ -401,7 +401,7 @@
       ${section('9 · Health', 'health')}
       ${section('10 · Sarvashtakavarga', 'sarvashtaka')}
       ${section('11 · Progeny (Santāna)', 'progeny')}
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.16</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.17</p>
       <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>`;
   }
 
@@ -899,17 +899,45 @@
     else if (promised) verdict = { label: 'Marriage Promised (qualified — one system)', cls: 'mid' };
     else verdict = { label: 'Marriage Not Clearly Promised', cls: 'bad' };
 
-    return { promised, kpPromised, parPromised, verdict, confidence: p.confidence, index: mi.index, kpR, parR };
+    // ---- derivation breakdowns (for transparency in UI + report) ----
+    const kpRaw = (p.matched ? p.matched.length : 0) * 25 - (p.denials ? p.denials.length : 0) * 12 + 25;
+    const kpMath = { sigHouses: p.sigHouses, matched: p.matched || [], denials: p.denials || [], raw: kpRaw, value: p.confidence };
+
+    const W = BPHS.MARRIAGE_HOUSES;
+    const parRows = []; let weighted = 0, totalW = 0;
+    Object.keys(W).sort((a, b) => W[b] - W[a]).forEach((h) => {
+      const bs = BPHS.bhavaStrength(parseInt(h, 10), chart);
+      weighted += bs.score * W[h]; totalW += W[h];
+      parRows.push({ house: h, w: W[h], score: bs.score, contrib: Math.round(bs.score * W[h] * 10) / 10 });
+    });
+    const baseAvg = Math.round((weighted / totalW) * 10) / 10;
+    const karakaAdd = Math.round(karakaDg.score * 2 * 10) / 10;
+    const afflictSub = mi.seventhAfflictions * 3;
+    const parMath = { rows: parRows, baseAvg, karakaName, karakaDg, karakaAdd, afflictions: mi.seventhAfflictions, afflictSub, index: mi.index };
+
+    return { promised, kpPromised, parPromised, verdict, confidence: p.confidence, index: mi.index, kpR, parR, kpMath, parMath };
   }
 
   function promiseCard(pa, label) {
+    const km = pa.kpMath, pm = pa.parMath;
+    const parTableRows = pm.rows.map((r) => `<tr><td>H${r.house}</td><td class="num">${r.w}</td><td class="num">${r.score}</td><td class="num">${r.contrib}</td></tr>`).join('');
     return `<div class="card">
       <h3>${esc(label)} — Marriage Promise</h3>
       <div style="margin:4px 0">${chip(pa.verdict.label, pa.verdict.cls)}</div>
       <div class="kv"><span>KP (7th cusp sub-lord)</span><span><b>${pa.kpPromised ? 'Promised' : 'Not promised'}</b> · ${pa.confidence}%</span></div>
       <div class="kv"><span>Parāśara (7th house &amp; kāraka)</span><span><b>${pa.parPromised ? 'Promised' : 'Weak'}</b> · index ${pa.index}/100</span></div>
+
       <p class="small" style="margin:8px 0 2px"><b>KP rationale</b></p>${pa.kpR.map((x) => `<p class="small bhava-char-item">• ${x}</p>`).join('')}
+      <p class="small" style="margin:6px 0 2px"><b>How the KP % is derived</b></p>
+      <p class="small bhava-char-item">• Sub-lord signifies [${km.sigHouses.join(', ')}] — matched 2/7/11 = [${km.matched.join(', ') || 'none'}] (${km.matched.length}); denial 1/6/10 = [${km.denials.join(', ') || 'none'}] (${km.denials.length}).</p>
+      <p class="small bhava-char-item">• ${km.matched.length}×25 + 25 (base) − ${km.denials.length}×12 = ${km.raw} → clamped to <b>${km.value}%</b>.</p>
+
       <p class="small" style="margin:8px 0 2px"><b>Parāśara rationale</b></p>${pa.parR.map((x) => `<p class="small bhava-char-item">• ${esc(x)}</p>`).join('')}
+      <p class="small" style="margin:6px 0 2px"><b>How the BPHS index is derived</b></p>
+      <table class="small"><thead><tr><th>House</th><th class="num">Weight</th><th class="num">Strength</th><th class="num">Contribution</th></tr></thead>
+        <tbody>${parTableRows}</tbody></table>
+      <p class="small bhava-char-item">• Weighted average = <b>${pm.baseAvg}</b>; ${esc(pm.karakaName)} kāraka (${esc(pm.karakaDg.label)}) → ${pm.karakaAdd >= 0 ? '+' : ''}${pm.karakaAdd}; 7th-house afflictions ${pm.afflictions} → −${pm.afflictSub}.</p>
+      <p class="small bhava-char-item">• ${pm.baseAvg} ${pm.karakaAdd >= 0 ? '+ ' + pm.karakaAdd : '− ' + Math.abs(pm.karakaAdd)} − ${pm.afflictSub} → clamped to <b>${pm.index}/100</b>.</p>
     </div>`;
   }
   function notPromisedNote(label) {
@@ -1518,7 +1546,7 @@
       ${section('10 · Sarvashtakavarga (SAV)', 'sarvashtaka')}
       ${section('11 · Progeny (Santāna)', 'progeny')}
 
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.16</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.17</p>
       <p class="dev-credit footer-credit">Developed by <b>Dr. Anil Sabaji</b> &nbsp;•&nbsp; Email: anilsabaji@gmail.com</p>
     `;
   }
@@ -1559,7 +1587,7 @@
   let _reportCss = null;
   async function getReportCss() {
     if (_reportCss != null) return _reportCss;
-    try { const res = await fetch('css/styles.css?v=29'); _reportCss = res.ok ? await res.text() : ''; }
+    try { const res = await fetch('css/styles.css?v=30'); _reportCss = res.ok ? await res.text() : ''; }
     catch (e) { _reportCss = ''; }
     return _reportCss;
   }
@@ -1641,7 +1669,7 @@ ${pdfMode ? '/* PDF raster mode: no body padding (margins come from html2pdf); f
 <div class="report-meta">Generated ${esc(dateStr)} — Vedic Marriage Matching Module (BPHS &amp; KP)</div>
 <div id="report-content">${reportHtml}</div>
 <p class="footer-note" style="text-align:center;margin-top:24px;opacity:.7;font-size:11.5px">
-  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.16
+  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.17
 </p>
 <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>
 </body>
