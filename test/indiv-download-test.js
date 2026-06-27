@@ -64,7 +64,7 @@ setTimeout(() => {
     frames.forEach((f) => {
       try {
         const html = f.contentWindow.document.documentElement.innerHTML || '';
-        if (html.includes('report-content') && html.includes('Build v5.20') && html.length > 5000) ok = true;
+        if (html.includes('report-content') && html.includes('Build v5.21') && html.length > 5000) ok = true;
       } catch (e) { /* ignore */ }
     });
     if (!ok) { console.error('FAIL: print iframe did not contain a populated report document'); process.exit(1); }

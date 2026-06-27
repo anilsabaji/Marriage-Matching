@@ -118,8 +118,13 @@
     r.bphs = BPHS.coupleAssessment(boy, girl);
     r.kp = KP.coupleAssessment(boy, girl);
     r.health = Health.compatibility(boy, girl);
-    r.window = Timeline.coupleMarriageWindow(boy, girl, state.fromJd);
-    r.kpTiming = { boy: Timeline.kpMarriageWindow(boy, state.fromJd, 20), girl: Timeline.kpMarriageWindow(girl, state.fromJd, 20) };
+    const AGE_MARR = 21; // marriage scan begins at the native's marriageable age
+    const boyFromJd = boy.jd + AGE_MARR * Dasha.YEAR_DAYS;
+    const girlFromJd = girl.jd + AGE_MARR * Dasha.YEAR_DAYS;
+    r.marriageFromAge = AGE_MARR;
+    r.boyFromJd = boyFromJd; r.girlFromJd = girlFromJd;
+    r.window = Timeline.coupleMarriageWindow(boy, girl, boyFromJd, girlFromJd, 30);
+    r.kpTiming = { boy: Timeline.kpMarriageWindow(boy, boyFromJd, 30), girl: Timeline.kpMarriageWindow(girl, girlFromJd, 30) };
     r.forecast = Timeline.relationshipForecast(boy, girl, state.fromJd, 20);
     r.bhavaB = BPHS.analyzeAll(boy);
     r.bhavaG = BPHS.analyzeAll(girl);
@@ -168,8 +173,11 @@
     r.health = Health.screen(chart);
     r.kuja = KujaDosha.analyze(chart);
     r.separation = Separation.analyze(chart, gender);
-    r.window = Timeline.marriageWindow(chart, gender, state.fromJd);
-    r.kpTiming = Timeline.kpMarriageWindow(chart, state.fromJd, 20);
+    const AGE_MARR = 21; // marriage scan begins at the native's marriageable age
+    const fromJd21 = chart.jd + AGE_MARR * Dasha.YEAR_DAYS;
+    r.marriageFromAge = AGE_MARR; r.marriageFromJd = fromJd21;
+    r.window = Timeline.marriageWindow(chart, gender, fromJd21, 30);
+    r.kpTiming = Timeline.kpMarriageWindow(chart, fromJd21, 30);
     r.single = Timeline.strengthSeriesSingle(chart, gender, state.fromJd, 20, 3);
     r.transit = Transit.summary(chart, state.fromJd, 20);
     r.progeny = Progeny.analyze(chart, gender, state.fromJd, 20);
@@ -285,6 +293,8 @@
       <div class="card"><h2>Is Marriage Promised? — ${esc(r.name)}</h2>
         <p class="small muted">Timing is shown only if marriage is promised. The native is assessed by <b>KP</b> (7th cusp sub-lord signifying 2/7/11)
           and <b>Parāśara</b> (7th house, its lord and the Venus/Jupiter kāraka).</p>
+        <p class="small muted">Marriage timing is scanned from the native's <b>age 21</b> (from <b>${Dasha.fmtDMY(r.marriageFromJd)}</b>) — the earliest
+          favourable window is the predicted marriage period; for older charts it lands in the past (useful for <b>back-testing</b>).</p>
       </div>
       <div class="grid-2">${promiseCard(pa, r.name)}</div>`;
     if (!pa.promised) {
@@ -405,7 +415,7 @@
       ${section('9 · Health', 'health')}
       ${section('10 · Sarvashtakavarga', 'sarvashtaka')}
       ${section('11 · Progeny (Santāna)', 'progeny')}
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.20</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.21</p>
       <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>`;
   }
 
@@ -1004,6 +1014,9 @@
         <p class="small muted">Per classical principle, <b>timing is meaningful only when marriage is promised</b> in the chart.
           Each partner is first assessed by <b>KP</b> (7th cusp sub-lord signifying 2/7/11) and <b>Parāśara</b>
           (7th house, its lord and the Venus/Jupiter kāraka). Possible timing is shown below only for a partner whose marriage is promised.</p>
+        <p class="small muted">Marriage timing is scanned from each native's <b>age 21</b> (marriageable age) — Groom from
+          <b>${Dasha.fmtDMY(r.boyFromJd)}</b>, Bride from <b>${Dasha.fmtDMY(r.girlFromJd)}</b>. The earliest favourable window is the
+          predicted marriage period; for charts older than that it falls in the past, which is useful for <b>back-testing</b> against the actual marriage.</p>
       </div>
       <div class="grid-2">${promiseCard(paB, 'Groom (Boy)')}${promiseCard(paG, 'Bride (Girl)')}</div>`;
 
@@ -1574,7 +1587,7 @@
       ${section('10 · Sarvashtakavarga (SAV)', 'sarvashtaka')}
       ${section('11 · Progeny (Santāna)', 'progeny')}
 
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.20</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.21</p>
       <p class="dev-credit footer-credit">Developed by <b>Dr. Anil Sabaji</b> &nbsp;•&nbsp; Email: anilsabaji@gmail.com</p>
     `;
   }
@@ -1615,7 +1628,7 @@
   let _reportCss = null;
   async function getReportCss() {
     if (_reportCss != null) return _reportCss;
-    try { const res = await fetch('css/styles.css?v=33'); _reportCss = res.ok ? await res.text() : ''; }
+    try { const res = await fetch('css/styles.css?v=34'); _reportCss = res.ok ? await res.text() : ''; }
     catch (e) { _reportCss = ''; }
     return _reportCss;
   }
@@ -1697,7 +1710,7 @@ ${pdfMode ? '/* PDF raster mode: no body padding (margins come from html2pdf); f
 <div class="report-meta">Generated ${esc(dateStr)} — Vedic Marriage Matching Module (BPHS &amp; KP)</div>
 <div id="report-content">${reportHtml}</div>
 <p class="footer-note" style="text-align:center;margin-top:24px;opacity:.7;font-size:11.5px">
-  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.20
+  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.21
 </p>
 <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>
 </body>

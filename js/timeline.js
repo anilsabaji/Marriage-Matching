@@ -59,10 +59,11 @@ const Timeline = (function () {
   }
 
   // NEAREST marriage window for an individual
-  function marriageWindow(chart, gender, fromJd) {
+  function marriageWindow(chart, gender, fromJd, years) {
+    years = years || 20;
     const mp = marriagePlanets(chart, gender);
     const sp = stressPlanets(chart);
-    const { periods } = Dasha.expandWindow(chart, fromJd, 20);
+    const { periods } = Dasha.expandWindow(chart, fromJd, years);
     const scored = [];
     periods.forEach((p) => {
       let base = periodFavorability(chart, mp, sp, p);
@@ -129,16 +130,20 @@ const Timeline = (function () {
     return { nearest, top: wins.slice(0, 6), sigList, cuspSub, sigStrength };
   }
 
-  // Couple nearest window: where both individual scores are high & overlapping
-  function coupleMarriageWindow(boyChart, girlChart, fromJd) {
-    const b = marriageWindow(boyChart, 'male', fromJd);
-    const g = marriageWindow(girlChart, 'female', fromJd);
+  // Couple nearest window: where both individual scores are high & overlapping.
+  // Each partner is scanned from their OWN start date (e.g. their age 21); the
+  // joint window is sampled from the later of the two starts.
+  function coupleMarriageWindow(boyChart, girlChart, boyFromJd, girlFromJd, years) {
+    years = years || 20;
+    const b = marriageWindow(boyChart, 'male', boyFromJd, years);
+    const g = marriageWindow(girlChart, 'female', girlFromJd, years);
 
-    // sample every ~month over 12 years, compute joint readiness
+    // sample every ~month from the later start, compute joint readiness
+    const jointStart = Math.max(boyFromJd, girlFromJd);
     const samples = [];
     const stepDays = 30;
-    const span = 12 * Dasha.YEAR_DAYS;
-    for (let jd = fromJd; jd <= fromJd + span; jd += stepDays) {
+    const span = Math.min(years, 16) * Dasha.YEAR_DAYS;
+    for (let jd = jointStart; jd <= jointStart + span; jd += stepDays) {
       const bs = scoreAt(boyChart, 'male', b.mp, b.sp, jd);
       const gs = scoreAt(girlChart, 'female', g.mp, g.sp, jd);
       const joint = Math.min(bs, gs) * 0.6 + ((bs + gs) / 2) * 0.4;
@@ -155,8 +160,8 @@ const Timeline = (function () {
     const runG = Dasha.runningAt(girlChart, nearest.jd);
     return {
       boy: b, girl: g, samples, peak, nearest,
-      nearestDate: Dasha.fmtYM(nearest.jd),
-      nearestRange: `${Dasha.fmtYM(nearest.jd)} – ${Dasha.fmtYM(nearest.jd + 270)}`,
+      nearestDate: Dasha.fmtDMY(nearest.jd),
+      nearestRange: `${Dasha.fmtDMY(nearest.jd)} – ${Dasha.fmtDMY(nearest.jd + 270)}`,
       boyDasha: run, girlDasha: runG,
     };
   }
