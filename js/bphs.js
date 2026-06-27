@@ -120,6 +120,67 @@ const BPHS = (function () {
     return rows;
   }
 
+  /* ---------------- D9 (Navāṁśa) marriage analysis ---------------- */
+  const NAV_START = [0, 9, 6, 3, 0, 9, 6, 3, 0, 9, 6, 3];
+  function navamsaSign(sidLon) {
+    const s = Math.floor(sidLon / 30);
+    const d = sidLon - s * 30;
+    const pada = Math.floor(d / (30 / 9));
+    return (NAV_START[s] + pada) % 12;
+  }
+  // dignity of a planet for an arbitrary (e.g. navāṁśa) sign
+  function dignityInSign(planet, sign) {
+    if (Astro.EXALT[planet] === sign) return { label: 'Exalted', score: 5 };
+    if (Astro.DEBIL[planet] === sign) return { label: 'Debilitated', score: -3 };
+    if ((Astro.OWN[planet] || []).includes(sign)) return { label: 'Own sign', score: 4 };
+    const lord = Astro.RASHI_LORD[sign];
+    const rel = Astro.relation(planet, lord);
+    if (rel === 'friend' || rel === 'self') return { label: 'Friendly', score: 2 };
+    if (rel === 'enemy') return { label: 'Enemy', score: -1 };
+    return { label: 'Neutral', score: 1 };
+  }
+  // Navāṁśa marriage factors → a bounded adjustment to the marriage index + rationale.
+  function d9Marriage(chart, gender) {
+    const navLagna = navamsaSign(chart.ascendant.lon);
+    const nav = {}; Astro.PLANETS.forEach((p) => { nav[p] = navamsaSign(chart.planets[p].lon); });
+    const nav7 = (navLagna + 6) % 12;
+    const lagna = chart.ascendant.sign;
+    const seventhLord = Astro.RASHI_LORD[(lagna + 6) % 12];
+    const karaka = gender === 'female' ? 'Jupiter' : 'Venus';
+    const factors = []; let adj = 0;
+
+    // Vargottama: planet in the same sign in D1 and D9 — strongly reinforced
+    const vargottama = Astro.PLANETS.filter((p) => chart.planets[p].sign === nav[p]);
+
+    // 7th lord dignity in navāṁśa
+    const slD9 = dignityInSign(seventhLord, nav[seventhLord]);
+    adj += slD9.score * 1.5;
+    factors.push(`7th lord ${seventhLord} in Navāṁśa: ${slD9.label}.`);
+    if (vargottama.includes(seventhLord)) { adj += 3; factors.push(`7th lord ${seventhLord} is Vargottama (same sign in D1 & D9) — marriage strongly confirmed.`); }
+
+    // kāraka dignity in navāṁśa
+    const kD9 = dignityInSign(karaka, nav[karaka]);
+    adj += kD9.score * 1.2;
+    factors.push(`${karaka} (kāraka) in Navāṁśa: ${kD9.label}.`);
+    if (vargottama.includes(karaka)) { adj += 2; factors.push(`${karaka} is Vargottama — a dependable, lasting marital significator.`); }
+
+    // navāṁśa 7th occupants
+    const occ7 = Astro.PLANETS.filter((p) => nav[p] === nav7);
+    const ben7 = occ7.filter((p) => NAT_BENEFIC.includes(p));
+    const mal7 = occ7.filter((p) => NAT_MALEFIC.includes(p));
+    if (ben7.length) { adj += ben7.length * 2; factors.push(`Benefic(s) ${ben7.join(', ')} in the Navāṁśa 7th — harmony in the inner marriage.`); }
+    if (mal7.length) { adj -= mal7.length * 2.5; factors.push(`Malefic(s) ${mal7.join(', ')} in the Navāṁśa 7th — strain in the inner marriage.`); }
+    if (!occ7.length) factors.push('Navāṁśa 7th unoccupied — judged through its lord.');
+
+    if (vargottama.length) factors.push(`Vargottama planets: ${vargottama.join(', ')}.`);
+
+    adj = Math.max(-12, Math.min(14, Math.round(adj)));
+    return {
+      navLagna, navLagnaSign: Astro.RASHIS[navLagna], nav7, nav7Sign: Astro.RASHIS[nav7],
+      vargottama, seventhLord, seventhLordD9: slD9, karaka, karakaD9: kD9, occ7, ben7, mal7, adj, factors,
+    };
+  }
+
   // Marriage-specific index for an individual chart (0-100)
   function marriageIndex(chart, gender) {
     const rows = analyzeAll(chart);
@@ -146,6 +207,11 @@ const BPHS = (function () {
     });
     base -= afflict * 3;
 
+    // D9 (Navāṁśa) contribution — Vargottama, 7th-lord & kāraka navāṁśa dignity,
+    // navāṁśa-7th occupants. The navāṁśa is the prime confirmatory varga for marriage.
+    const d9 = d9Marriage(chart, gender);
+    base += d9.adj;
+
     base = Math.max(5, Math.min(98, Math.round(base)));
 
     return {
@@ -160,6 +226,7 @@ const BPHS = (function () {
       jupiterDignity: jup,
       seventhAfflictions: afflict,
       karakaUsed: gender === 'female' ? 'Jupiter' : 'Venus',
+      d9,
     };
   }
 
@@ -201,6 +268,7 @@ const BPHS = (function () {
     BHAVA_SIGNIFICATIONS, MARRIAGE_HOUSES, NAT_BENEFIC, NAT_MALEFIC,
     dignity, occupants, aspectingPlanets, bhavaStrength,
     analyzeAll, marriageIndex, coupleAssessment, verdict,
+    navamsaSign, dignityInSign, d9Marriage,
   };
 })();
 
