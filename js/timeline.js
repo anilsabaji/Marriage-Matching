@@ -59,7 +59,7 @@ const Timeline = (function () {
   }
 
   // NEAREST marriage window for an individual
-  function marriageWindow(chart, gender, fromJd, years) {
+  function marriageWindow(chart, gender, fromJd, years, todayJd) {
     years = years || 20;
     const mp = marriagePlanets(chart, gender);
     const sp = stressPlanets(chart);
@@ -86,7 +86,10 @@ const Timeline = (function () {
     const strong = scored.filter((s) => s.score >= threshold && s.score > 0);
     strong.sort((a, b) => a.startJd - b.startJd);
     const nearest = strong[0] || scored[0];
-    return { mp, sp, scored, nearest, topByScore: scored.slice(0, 6) };
+    // nearest FUTURE favourable window (start/extends on or after today)
+    const tj = todayJd || fromJd;
+    const nearestFuture = strong.find((s) => s.endJd >= tj) || null;
+    return { mp, sp, scored, nearest, nearestFuture, topByScore: scored.slice(0, 8) };
   }
 
   /* ====================================================================
@@ -133,16 +136,16 @@ const Timeline = (function () {
   // Couple nearest window: where both individual scores are high & overlapping.
   // Each partner is scanned from their OWN start date (e.g. their age 21); the
   // joint window is sampled from the later of the two starts.
-  function coupleMarriageWindow(boyChart, girlChart, boyFromJd, girlFromJd, years) {
+  function coupleMarriageWindow(boyChart, girlChart, boyFromJd, girlFromJd, years, todayJd) {
     years = years || 20;
-    const b = marriageWindow(boyChart, 'male', boyFromJd, years);
-    const g = marriageWindow(girlChart, 'female', girlFromJd, years);
+    const b = marriageWindow(boyChart, 'male', boyFromJd, years, todayJd);
+    const g = marriageWindow(girlChart, 'female', girlFromJd, years, todayJd);
 
     // sample every ~month from the later start, compute joint readiness
     const jointStart = Math.max(boyFromJd, girlFromJd);
     const samples = [];
     const stepDays = 30;
-    const span = Math.min(years, 16) * Dasha.YEAR_DAYS;
+    const span = Math.min(years, 39) * Dasha.YEAR_DAYS;
     for (let jd = jointStart; jd <= jointStart + span; jd += stepDays) {
       const bs = scoreAt(boyChart, 'male', b.mp, b.sp, jd);
       const gs = scoreAt(girlChart, 'female', g.mp, g.sp, jd);
@@ -156,12 +159,17 @@ const Timeline = (function () {
     const cut = peak.joint * 0.85;
     const cand = samples.filter((s) => s.joint >= cut && s.joint > 0);
     const nearest = cand.length ? cand[0] : peak;
+    // nearest FUTURE joint window (on or after today)
+    const tj = todayJd || jointStart;
+    const futCand = cand.filter((s) => s.jd >= tj);
+    const nearestFuture = futCand.length ? futCand[0] : null;
     const run = Dasha.runningAt(boyChart, nearest.jd);
     const runG = Dasha.runningAt(girlChart, nearest.jd);
     return {
-      boy: b, girl: g, samples, peak, nearest,
+      boy: b, girl: g, samples, peak, nearest, nearestFuture,
       nearestDate: Dasha.fmtDMY(nearest.jd),
       nearestRange: `${Dasha.fmtDMY(nearest.jd)} – ${Dasha.fmtDMY(nearest.jd + 270)}`,
+      nearestFutureRange: nearestFuture ? `${Dasha.fmtDMY(nearestFuture.jd)} – ${Dasha.fmtDMY(nearestFuture.jd + 270)}` : null,
       boyDasha: run, girlDasha: runG,
     };
   }
