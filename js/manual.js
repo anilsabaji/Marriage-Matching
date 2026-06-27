@@ -152,6 +152,10 @@ const Manual = (function () {
       both partners' readiness is jointly high. The <b>20-year forecast</b> reports the
       relationship strength band for each successive period, blending both partners'
       dasha favourability with concurrent transits.</p>
+      <p><b>Timing scan from age 21.</b> Marriage timing (Tab 8) is scanned from each native's
+      <b>age 21</b> (birth + 21 years), not from today. The earliest favourable window from that point
+      is the predicted marriage period: for charts older than 21 it lands in the past (used to
+      <b>back-test</b> against the actual marriage); for younger charts it is a future date.</p>
       <p><b>Dual-method commitment strength.</b> The 20-year commitment graph plots two
       independently-computed values per partner: a <b>KP</b> value (from the running dasha
       lords' nakṣatra/sub-lord significators of houses 2-7-11 vs 1-6-10-12) and a

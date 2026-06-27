@@ -118,8 +118,13 @@
     r.bphs = BPHS.coupleAssessment(boy, girl);
     r.kp = KP.coupleAssessment(boy, girl);
     r.health = Health.compatibility(boy, girl);
-    r.window = Timeline.coupleMarriageWindow(boy, girl, state.fromJd);
-    r.kpTiming = { boy: Timeline.kpMarriageWindow(boy, state.fromJd, 20), girl: Timeline.kpMarriageWindow(girl, state.fromJd, 20) };
+    const AGE_MARR = 21; // marriage scan begins at the native's marriageable age
+    const boyFromJd = boy.jd + AGE_MARR * Dasha.YEAR_DAYS;
+    const girlFromJd = girl.jd + AGE_MARR * Dasha.YEAR_DAYS;
+    r.marriageFromAge = AGE_MARR;
+    r.boyFromJd = boyFromJd; r.girlFromJd = girlFromJd;
+    r.window = Timeline.coupleMarriageWindow(boy, girl, boyFromJd, girlFromJd, 39, state.fromJd);
+    r.kpTiming = { boy: Timeline.kpMarriageWindow(boy, boyFromJd, 39), girl: Timeline.kpMarriageWindow(girl, girlFromJd, 39) };
     r.forecast = Timeline.relationshipForecast(boy, girl, state.fromJd, 20);
     r.bhavaB = BPHS.analyzeAll(boy);
     r.bhavaG = BPHS.analyzeAll(girl);
@@ -168,8 +173,11 @@
     r.health = Health.screen(chart);
     r.kuja = KujaDosha.analyze(chart);
     r.separation = Separation.analyze(chart, gender);
-    r.window = Timeline.marriageWindow(chart, gender, state.fromJd);
-    r.kpTiming = Timeline.kpMarriageWindow(chart, state.fromJd, 20);
+    const AGE_MARR = 21; // marriage scan begins at the native's marriageable age
+    const fromJd21 = chart.jd + AGE_MARR * Dasha.YEAR_DAYS;
+    r.marriageFromAge = AGE_MARR; r.marriageFromJd = fromJd21;
+    r.window = Timeline.marriageWindow(chart, gender, fromJd21, 39, state.fromJd);
+    r.kpTiming = Timeline.kpMarriageWindow(chart, fromJd21, 39);
     r.single = Timeline.strengthSeriesSingle(chart, gender, state.fromJd, 20, 3);
     r.transit = Transit.summary(chart, state.fromJd, 20);
     r.progeny = Progeny.analyze(chart, gender, state.fromJd, 20);
@@ -280,11 +288,15 @@
     let rows = '';
     (w.topByScore || []).forEach((t) => { rows += `<tr><td>${Dasha.fmtDMY(t.startJd)} – ${Dasha.fmtDMY(t.endJd)}</td><td>${t.md}/${t.ad}/${t.pd}</td><td class="num">${fix(t.score, 1)}</td></tr>`; });
     const near = (w.nearest) ? `${Dasha.fmtDMY(w.nearest.startJd)} – ${Dasha.fmtDMY(w.nearest.endJd)}` : '—';
+    const nf = w.nearestFuture;
+    const nearFut = nf ? `${Dasha.fmtDMY(nf.startJd)} – ${Dasha.fmtDMY(nf.endJd)}` : '— predicted window already past';
     const pa = promiseAssessment(r.chart, r.gender);
     let html = `
       <div class="card"><h2>Is Marriage Promised? — ${esc(r.name)}</h2>
         <p class="small muted">Timing is shown only if marriage is promised. The native is assessed by <b>KP</b> (7th cusp sub-lord signifying 2/7/11)
           and <b>Parāśara</b> (7th house, its lord and the Venus/Jupiter kāraka).</p>
+        <p class="small muted">Marriage timing is scanned across the native's <b>age 21 to 60</b> (from <b>${Dasha.fmtDMY(r.marriageFromJd)}</b>) — the earliest
+          favourable window is the predicted marriage period (past for older charts → <b>back-testing</b>); the <b>nearest future window</b> from today is also shown.</p>
       </div>
       <div class="grid-2">${promiseCard(pa, r.name)}</div>`;
     if (!pa.promised) {
@@ -296,8 +308,9 @@
     html += `
       <div class="card"><h2>Marriage Timing — ${esc(r.name)}</h2>
         <div class="big-score" style="font-size:24px">${near}</div>
-        <p class="small muted">Nearest favourable marriage window from the native's Vimśottari dasha + supportive transits.</p></div>
-      <div class="card"><h3>Strongest marriage periods (next 20 years)</h3>
+        <div class="kv"><span>Nearest future window (from today)</span><span><b>${nearFut}</b></span></div>
+        <p class="small muted">Earliest favourable window (age 21–60) from the native's Vimśottari dasha + supportive transits.</p></div>
+      <div class="card"><h3>Favourable marriage windows (age 21–60)</h3>
         <table><thead><tr><th>Window</th><th>MD/AD/PD</th><th class="num">Score</th></tr></thead><tbody>${rows}</tbody></table></div>
       <h2 style="margin:6px 2px">KP-System Marriage Timing</h2>
       <div class="grid-2">${kpTimingCard(r.kpTiming, r.name)}</div>
@@ -405,7 +418,7 @@
       ${section('9 · Health', 'health')}
       ${section('10 · Sarvashtakavarga', 'sarvashtaka')}
       ${section('11 · Progeny (Santāna)', 'progeny')}
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.20</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.22</p>
       <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>`;
   }
 
@@ -981,17 +994,19 @@
       person.topByScore.forEach((t) => {
         rows += `<tr><td>${Dasha.fmtDMY(t.startJd)} – ${Dasha.fmtDMY(t.endJd)}</td><td>${t.md}/${t.ad}/${t.pd}</td><td class="num">${fix(t.score,1)}</td></tr>`;
       });
-      return `<div class="card"><h3>${label} — strongest marriage periods</h3>
+      return `<div class="card"><h3>${label} — favourable windows (age 21–60)</h3>
         <table><thead><tr><th>Window</th><th>MD/AD/PD</th><th class="num">Score</th></tr></thead><tbody>${rows}</tbody></table></div>`;
     }
     const fmtWin = (n) => n ? `${Dasha.fmtDMY(n.startJd)} – ${Dasha.fmtDMY(n.endJd)}` : '—';
     const period = (n) => n ? `${n.md}/${n.ad}/${n.pd}` : '—';
     function parTimingCard(pw, label, who) {
+      const nf = pw.nearestFuture;
       return `<div class="card">
         <h3>${label} — own chart (Parāśara)</h3>
         <div class="big-score" style="font-size:20px">${fmtWin(pw.nearest)}</div>
         <div class="kv"><span>Dasha (MD/AD/PD)</span><span>${period(pw.nearest)}</span></div>
-        <p class="small muted">Nearest favourable marriage window from the ${who}'s own Vimśottari dasha + transits.</p>
+        <div class="kv"><span>Nearest future window (from today)</span><span>${nf ? `${fmtWin(nf)} <span class="muted">(${period(nf)})</span>` : '— predicted window already past'}</span></div>
+        <p class="small muted">Favourable windows scanned from the ${who}'s age 21 to 60 (own dasha + transits).</p>
       </div>`;
     }
 
@@ -1004,6 +1019,9 @@
         <p class="small muted">Per classical principle, <b>timing is meaningful only when marriage is promised</b> in the chart.
           Each partner is first assessed by <b>KP</b> (7th cusp sub-lord signifying 2/7/11) and <b>Parāśara</b>
           (7th house, its lord and the Venus/Jupiter kāraka). Possible timing is shown below only for a partner whose marriage is promised.</p>
+        <p class="small muted">Marriage timing is scanned across each native's <b>age 21 to 60</b> — Groom from
+          <b>${Dasha.fmtDMY(r.boyFromJd)}</b>, Bride from <b>${Dasha.fmtDMY(r.girlFromJd)}</b>. The earliest favourable window is the
+          predicted marriage period (in the past for older charts — useful for <b>back-testing</b>); the <b>nearest future window</b> from today is also shown for those not yet married.</p>
       </div>
       <div class="grid-2">${promiseCard(paB, 'Groom (Boy)')}${promiseCard(paG, 'Bride (Girl)')}</div>`;
 
@@ -1021,7 +1039,8 @@
       <div class="card">
         <h2>Nearest Marriage Timing</h2>
         <div class="big-score" style="font-size:26px">${esc(w.nearestRange)}</div>
-        <p class="small muted"><b>Joint window</b> — earliest season where both partners' Dasha readiness and supportive transits coincide.</p>
+        <p class="small muted"><b>Joint window</b> — earliest season (from age 21) where both partners' Dasha readiness and supportive transits coincide.</p>
+        <div class="kv"><span>Nearest future joint window (from today)</span><span><b>${w.nearestFutureRange || '— predicted window already past'}</b></span></div>
         <div class="kv"><span>Groom running Dasha then</span><span>${w.boyDasha ? `${w.boyDasha.md.lord}/${w.boyDasha.ad?w.boyDasha.ad.lord:'-'}/${w.boyDasha.pd?w.boyDasha.pd.lord:'-'}` : '-'}</span></div>
         <div class="kv"><span>Bride running Dasha then</span><span>${w.girlDasha ? `${w.girlDasha.md.lord}/${w.girlDasha.ad?w.girlDasha.ad.lord:'-'}/${w.girlDasha.pd?w.girlDasha.pd.lord:'-'}` : '-'}</span></div>
       </div>`;
@@ -1574,7 +1593,7 @@
       ${section('10 · Sarvashtakavarga (SAV)', 'sarvashtaka')}
       ${section('11 · Progeny (Santāna)', 'progeny')}
 
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.20</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.22</p>
       <p class="dev-credit footer-credit">Developed by <b>Dr. Anil Sabaji</b> &nbsp;•&nbsp; Email: anilsabaji@gmail.com</p>
     `;
   }
@@ -1615,7 +1634,7 @@
   let _reportCss = null;
   async function getReportCss() {
     if (_reportCss != null) return _reportCss;
-    try { const res = await fetch('css/styles.css?v=33'); _reportCss = res.ok ? await res.text() : ''; }
+    try { const res = await fetch('css/styles.css?v=35'); _reportCss = res.ok ? await res.text() : ''; }
     catch (e) { _reportCss = ''; }
     return _reportCss;
   }
@@ -1697,7 +1716,7 @@ ${pdfMode ? '/* PDF raster mode: no body padding (margins come from html2pdf); f
 <div class="report-meta">Generated ${esc(dateStr)} — Vedic Marriage Matching Module (BPHS &amp; KP)</div>
 <div id="report-content">${reportHtml}</div>
 <p class="footer-note" style="text-align:center;margin-top:24px;opacity:.7;font-size:11.5px">
-  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.20
+  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.22
 </p>
 <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>
 </body>
