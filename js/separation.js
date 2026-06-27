@@ -152,6 +152,34 @@ const Separation = (function () {
       });
     } catch (e) { /* KP unavailable */ }
 
+    /* ---------- Severe Parāśara combination → divorce risk ×3 ----------
+     * Sun AND Ketu in the 7th, conjoined with or aspected by Mars (or another
+     * malefic), with NO benefic Jupiter aspect on the 7th, and the Lagna lord
+     * caught on the Rāhu–Ketu axis. This compound affliction multiplies the
+     * divorce risk (no Jupiter to protect, nodal derailment of the self/lagna).
+     */
+    (function () {
+      const occ7 = REAL.filter((p) => chart.planets[p] && chart.planets[p].house === 7);
+      if (!(occ7.includes('Sun') && occ7.includes('Ketu'))) return;
+      const extraMal = ['Mars', 'Saturn', 'Rahu'];
+      const malIn7 = occ7.filter((p) => extraMal.includes(p));
+      const malAsp7 = extraMal.filter((m) => aspectsHouse(m, chart.planets[m].house, 7));
+      const afflictors = [...new Set([...malIn7, ...malAsp7])];
+      if (!afflictors.length) return; // needs Mars/other malefic with or aspecting the 7th
+      const jupIn7 = chart.planets.Jupiter.house === 7;
+      const jupAsp7 = aspectsHouse('Jupiter', chart.planets.Jupiter.house, 7);
+      if (jupIn7 || jupAsp7) return; // a benefic Jupiter aspect protects — combo broken
+      const lagnaLord = Astro.RASHI_LORD[lagna];
+      const llHouse = chart.planets[lagnaLord] ? chart.planets[lagnaLord].house : 0;
+      const onNodeAxis = llHouse === chart.planets.Rahu.house || llHouse === chart.planets.Ketu.house;
+      if (!onNodeAxis) return;
+      const before = Math.round(divScore);
+      divScore = Math.max(divScore * 3, 70); // amplify ~3× (severe yoga → at least High)
+      sepScore += 12;
+      add('Sun', 1.2); add('Ketu', 1.4); add(afflictors[0], 1.0);
+      d1.push(`Severe combination — Sun + Ketu in the 7th, ${malIn7.length ? 'conjoined with' : 'aspected by'} ${afflictors.join(', ')}, with no benefic Jupiter aspect, and the Lagna lord ${lagnaLord} caught on the Rāhu–Ketu axis: divorce risk amplified ~3× (from ${before} to ${Math.round(Math.min(100, divScore))}).`);
+    })();
+
     sepScore = Math.min(100, sepScore);
     divScore = Math.min(100, divScore);
     widScore = Math.min(100, widScore);

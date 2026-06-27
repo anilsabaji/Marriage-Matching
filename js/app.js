@@ -401,7 +401,7 @@
       ${section('9 · Health', 'health')}
       ${section('10 · Sarvashtakavarga', 'sarvashtaka')}
       ${section('11 · Progeny (Santāna)', 'progeny')}
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.17</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.18</p>
       <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>`;
   }
 
@@ -1546,7 +1546,7 @@
       ${section('10 · Sarvashtakavarga (SAV)', 'sarvashtaka')}
       ${section('11 · Progeny (Santāna)', 'progeny')}
 
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.17</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.18</p>
       <p class="dev-credit footer-credit">Developed by <b>Dr. Anil Sabaji</b> &nbsp;•&nbsp; Email: anilsabaji@gmail.com</p>
     `;
   }
@@ -1587,7 +1587,7 @@
   let _reportCss = null;
   async function getReportCss() {
     if (_reportCss != null) return _reportCss;
-    try { const res = await fetch('css/styles.css?v=30'); _reportCss = res.ok ? await res.text() : ''; }
+    try { const res = await fetch('css/styles.css?v=31'); _reportCss = res.ok ? await res.text() : ''; }
     catch (e) { _reportCss = ''; }
     return _reportCss;
   }
@@ -1669,7 +1669,7 @@ ${pdfMode ? '/* PDF raster mode: no body padding (margins come from html2pdf); f
 <div class="report-meta">Generated ${esc(dateStr)} — Vedic Marriage Matching Module (BPHS &amp; KP)</div>
 <div id="report-content">${reportHtml}</div>
 <p class="footer-note" style="text-align:center;margin-top:24px;opacity:.7;font-size:11.5px">
-  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.17
+  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.18
 </p>
 <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>
 </body>
