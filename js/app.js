@@ -289,7 +289,7 @@
     (w.topByScore || []).forEach((t) => { rows += `<tr><td>${Dasha.fmtDMY(t.startJd)} – ${Dasha.fmtDMY(t.endJd)}</td><td>${t.md}/${t.ad}/${t.pd}</td><td class="num">${fix(t.score, 1)}</td></tr>`; });
     const near = (w.nearest) ? `${Dasha.fmtDMY(w.nearest.startJd)} – ${Dasha.fmtDMY(w.nearest.endJd)}` : '—';
     const nf = w.nearestFuture;
-    const nearFut = nf ? `${Dasha.fmtDMY(nf.startJd)} – ${Dasha.fmtDMY(nf.endJd)}` : '— predicted window already past';
+    const nearFut = nf ? `${Dasha.fmtDMY(nf.startJd)} – ${Dasha.fmtDMY(nf.endJd)}` : 'No Future Dates';
     const pa = promiseAssessment(r.chart, r.gender);
     let html = `
       <div class="card"><h2>Is Marriage Promised? — ${esc(r.name)}</h2>
@@ -420,7 +420,7 @@
       ${section('9 · Health', 'health')}
       ${section('10 · Sarvashtakavarga', 'sarvashtaka')}
       ${section('11 · Progeny (Santāna)', 'progeny')}
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.23</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.24</p>
       <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>`;
   }
 
@@ -989,17 +989,17 @@
         Review the BPHS &amp; KP Assessment tabs; a qualified astrologer should confirm before relying on timing.</div></div>`;
   }
 
-  function windowCard(list, title) {
+  function windowCard(list, title, emptyMsg) {
     const rows = (list || []).slice(0, 10).map((t) => `<tr><td>${Dasha.fmtDMY(t.startJd)} – ${Dasha.fmtDMY(t.endJd)}</td><td>${t.md}/${t.ad}/${t.pd}</td><td class="num">${fix(t.score, 1)}</td></tr>`).join('');
     return `<div class="card"><h3>${title}</h3>
       <table><thead><tr><th>Window</th><th>MD/AD/PD</th><th class="num">Score</th></tr></thead>
-      <tbody>${rows || '<tr><td colspan="3" class="muted small">No favourable window in this range.</td></tr>'}</tbody></table></div>`;
+      <tbody>${rows || `<tr><td colspan="3" class="muted small">${emptyMsg || 'None in this range.'}</td></tr>`}</tbody></table></div>`;
   }
   function partnerWindowBlock(pw, label) {
     return `<h2 style="margin:6px 2px">${esc(label)} — favourable marriage windows</h2>
       <div class="grid-2">
-        ${windowCard(pw.past, 'Past windows (age 21 → today)')}
-        ${windowCard(pw.future, 'Future windows (today → age 60)')}
+        ${windowCard(pw.past, 'Past windows (age 21 → today)', 'No Past Dates')}
+        ${windowCard(pw.future, 'Future windows (today → age 60)', 'No Future Dates')}
       </div>`;
   }
 
@@ -1021,7 +1021,7 @@
         <h3>${label} — own chart (Parāśara)</h3>
         <div class="big-score" style="font-size:20px">${fmtWin(pw.nearest)}</div>
         <div class="kv"><span>Dasha (MD/AD/PD)</span><span>${period(pw.nearest)}</span></div>
-        <div class="kv"><span>Nearest future window (from today)</span><span>${nf ? `${fmtWin(nf)} <span class="muted">(${period(nf)})</span>` : '— predicted window already past'}</span></div>
+        <div class="kv"><span>Nearest future window (from today)</span><span>${nf ? `${fmtWin(nf)} <span class="muted">(${period(nf)})</span>` : 'No Future Dates'}</span></div>
         <p class="small muted">Favourable windows scanned from the ${who}'s age 21 to 60 (own dasha + transits).</p>
       </div>`;
     }
@@ -1056,7 +1056,7 @@
         <h2>Nearest Marriage Timing</h2>
         <div class="big-score" style="font-size:26px">${esc(w.nearestRange)}</div>
         <p class="small muted"><b>Joint window</b> — earliest season (from age 21) where both partners' Dasha readiness and supportive transits coincide.</p>
-        <div class="kv"><span>Nearest future joint window (from today)</span><span><b>${w.nearestFutureRange || '— predicted window already past'}</b></span></div>
+        <div class="kv"><span>Nearest future joint window (from today)</span><span><b>${w.nearestFutureRange || 'No Future Dates'}</b></span></div>
         <div class="kv"><span>Groom running Dasha then</span><span>${w.boyDasha ? `${w.boyDasha.md.lord}/${w.boyDasha.ad?w.boyDasha.ad.lord:'-'}/${w.boyDasha.pd?w.boyDasha.pd.lord:'-'}` : '-'}</span></div>
         <div class="kv"><span>Bride running Dasha then</span><span>${w.girlDasha ? `${w.girlDasha.md.lord}/${w.girlDasha.ad?w.girlDasha.ad.lord:'-'}/${w.girlDasha.pd?w.girlDasha.pd.lord:'-'}` : '-'}</span></div>
       </div>`;
@@ -1607,7 +1607,7 @@
       ${section('10 · Sarvashtakavarga (SAV)', 'sarvashtaka')}
       ${section('11 · Progeny (Santāna)', 'progeny')}
 
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.23</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.24</p>
       <p class="dev-credit footer-credit">Developed by <b>Dr. Anil Sabaji</b> &nbsp;•&nbsp; Email: anilsabaji@gmail.com</p>
     `;
   }
@@ -1648,7 +1648,7 @@
   let _reportCss = null;
   async function getReportCss() {
     if (_reportCss != null) return _reportCss;
-    try { const res = await fetch('css/styles.css?v=36'); _reportCss = res.ok ? await res.text() : ''; }
+    try { const res = await fetch('css/styles.css?v=37'); _reportCss = res.ok ? await res.text() : ''; }
     catch (e) { _reportCss = ''; }
     return _reportCss;
   }
@@ -1730,7 +1730,7 @@ ${pdfMode ? '/* PDF raster mode: no body padding (margins come from html2pdf); f
 <div class="report-meta">Generated ${esc(dateStr)} — Vedic Marriage Matching Module (BPHS &amp; KP)</div>
 <div id="report-content">${reportHtml}</div>
 <p class="footer-note" style="text-align:center;margin-top:24px;opacity:.7;font-size:11.5px">
-  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.23
+  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.24
 </p>
 <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>
 </body>
