@@ -246,7 +246,11 @@
         <div class="kv"><span>${gender === 'female' ? 'Jupiter (husband kāraka)' : 'Venus (love kāraka)'} dignity</span><span><b>${esc(gender === 'female' ? mi.jupiterDignity.label : mi.venusDignity.label)}</b></span></div>
         <div class="kv"><span>7th-house afflictions</span><span>${mi.seventhAfflictions} planet(s)</span></div>
       </div>
-      <div class="card"><h3>House-by-house (marriage-relevant), chart-specific</h3>${cards}</div>`;
+      <div class="card"><h3>House-by-house (marriage-relevant), chart-specific</h3>${cards}</div>
+      <h2 style="margin:6px 2px">D9 (Navāṁśa) — Confirmatory Marriage Varga</h2>
+      <div class="grid-2">${d9Card(mi, r.name)}</div>
+      <div class="callout small">A <b>Vargottama</b> 7th lord or kāraka (same sign in D1 &amp; D9) strongly confirms marriage;
+        navāṁśa-7th benefics support, malefics strain. These factors are folded into the marriage index above.</div>`;
   }
 
   function renderKPIndividual() {
@@ -401,7 +405,7 @@
       ${section('9 · Health', 'health')}
       ${section('10 · Sarvashtakavarga', 'sarvashtaka')}
       ${section('11 · Progeny (Santāna)', 'progeny')}
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.19</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.20</p>
       <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>`;
   }
 
@@ -670,6 +674,20 @@
       </div>`;
   }
 
+  function d9Card(mi, label) {
+    const d = mi && mi.d9; if (!d) return '';
+    return `<div class="card">
+      <h3>${esc(label)} — D9 (Navāṁśa) factors</h3>
+      <div class="kv"><span>Navāṁśa Lagna</span><span><b>${d.navLagnaSign}</b></span></div>
+      <div class="kv"><span>Navāṁśa 7th sign</span><span>${d.nav7Sign}</span></div>
+      <div class="kv"><span>7th lord (${d.seventhLord}) in D9</span><span><b>${esc(d.seventhLordD9.label)}</b></span></div>
+      <div class="kv"><span>${d.karaka} (kāraka) in D9</span><span><b>${esc(d.karakaD9.label)}</b></span></div>
+      <div class="kv"><span>Vargottama planets</span><span>${d.vargottama.length ? d.vargottama.join(', ') : 'none'}</span></div>
+      <div class="kv"><span>D9 adjustment to index</span><span><b>${d.adj >= 0 ? '+' : ''}${d.adj}</b></span></div>
+      ${d.factors.map((f) => `<p class="small bhava-char-item">• ${esc(f)}</p>`).join('')}
+    </div>`;
+  }
+
   function renderBPHS() {
     const r = state.results; const b = r.bphs;
     const boy = state.boy, girl = state.girl;
@@ -725,6 +743,12 @@
         <h3>Combined Interpretation</h3>
         ${b.notes.map((n) => `<p class="small">• ${esc(n)}</p>`).join('')}
       </div>
+
+      <h2 style="margin:6px 2px">D9 (Navāṁśa) — Confirmatory Marriage Varga</h2>
+      <div class="grid-2">${d9Card(b.boy, esc(boy.meta.name) + ' (Groom)')}${d9Card(b.girl, esc(girl.meta.name) + ' (Bride)')}</div>
+      <div class="callout small">The Navāṁśa (D9) confirms the Rāśi promise: a <b>Vargottama</b> 7th lord or kāraka (same sign
+        in D1 &amp; D9) strongly reinforces marriage; benefics in the navāṁśa 7th support harmony, malefics strain it.
+        These factors feed the BPHS marriage index above (D9 adjustment shown per partner).</div>
 
       <div class="callout small">This assessment reads each house <b>specifically from the chart</b> — the sign on the cusp,
         the lord's dignity and placement, actual occupant planets and their condition, and aspects received.
@@ -892,6 +916,10 @@
     if (mi.seventhAfflictions) parR.push(`${mi.seventhAfflictions} malefic affliction(s) to the 7th — delay/obstacles to marriage.`);
     else parR.push('7th house free of direct malefic occupation — supportive.');
     parR.push(`Composite BPHS marriage index ${mi.index}/100 → ${parPromised ? 'marriage promised' : 'promise is weak / needs effort'}.`);
+    if (mi.d9) {
+      const vg = mi.d9.vargottama.length ? `Vargottama: ${mi.d9.vargottama.join(', ')}` : 'no Vargottama planets';
+      parR.push(`D9 (Navāṁśa): 7th lord ${mi.d9.seventhLord} ${mi.d9.seventhLordD9.label}, ${mi.d9.karaka} kāraka ${mi.d9.karakaD9.label}; ${vg} (index adj ${mi.d9.adj >= 0 ? '+' : ''}${mi.d9.adj}).`);
+    }
 
     const promised = kpPromised || parPromised;
     let verdict;
@@ -1546,7 +1574,7 @@
       ${section('10 · Sarvashtakavarga (SAV)', 'sarvashtaka')}
       ${section('11 · Progeny (Santāna)', 'progeny')}
 
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.19</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.20</p>
       <p class="dev-credit footer-credit">Developed by <b>Dr. Anil Sabaji</b> &nbsp;•&nbsp; Email: anilsabaji@gmail.com</p>
     `;
   }
@@ -1587,7 +1615,7 @@
   let _reportCss = null;
   async function getReportCss() {
     if (_reportCss != null) return _reportCss;
-    try { const res = await fetch('css/styles.css?v=32'); _reportCss = res.ok ? await res.text() : ''; }
+    try { const res = await fetch('css/styles.css?v=33'); _reportCss = res.ok ? await res.text() : ''; }
     catch (e) { _reportCss = ''; }
     return _reportCss;
   }
@@ -1669,7 +1697,7 @@ ${pdfMode ? '/* PDF raster mode: no body padding (margins come from html2pdf); f
 <div class="report-meta">Generated ${esc(dateStr)} — Vedic Marriage Matching Module (BPHS &amp; KP)</div>
 <div id="report-content">${reportHtml}</div>
 <p class="footer-note" style="text-align:center;margin-top:24px;opacity:.7;font-size:11.5px">
-  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.19
+  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.20
 </p>
 <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>
 </body>

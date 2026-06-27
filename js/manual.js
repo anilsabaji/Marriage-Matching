@@ -69,6 +69,12 @@ const Manual = (function () {
       <p>The <b>marriage index</b> weights houses 7 (×3), 2 &amp; 11 (×1.5), 5 &amp; 8 (×1),
       12 (×0.8), 4 (×0.6), then adjusts for the kāraka (Venus for the groom, Jupiter for
       the bride) and for malefic afflictions to the 7th.</p>
+      <p><b>D9 (Navāṁśa) confirmation.</b> The marriage index also folds in a bounded Navāṁśa
+      adjustment (−12…+14): the <b>D9 dignity of the 7th lord and of the kāraka</b>, a
+      <b>Vargottama</b> bonus when the 7th lord or kāraka holds the same sign in D1 and D9
+      (a strong confirmation of marriage), and benefics (+) / malefics (−) tenanting the
+      <b>navāṁśa 7th</b>. The per-partner D9 factors and the exact adjustment are shown on the
+      BPHS Assessment tab.</p>
 
       <h3>4. KP Marriage Analysis (<code>kp.js</code>)</h3>
       <p>Marriage is judged from the <b>sub-lord of the 7th cusp</b>. It is "promised"
