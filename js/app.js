@@ -276,7 +276,20 @@
     let rows = '';
     (w.topByScore || []).forEach((t) => { rows += `<tr><td>${Dasha.fmtDMY(t.startJd)} – ${Dasha.fmtDMY(t.endJd)}</td><td>${t.md}/${t.ad}/${t.pd}</td><td class="num">${fix(t.score, 1)}</td></tr>`; });
     const near = (w.nearest) ? `${Dasha.fmtDMY(w.nearest.startJd)} – ${Dasha.fmtDMY(w.nearest.endJd)}` : '—';
-    $('tab-timing').innerHTML = `
+    const pa = promiseAssessment(r.chart, r.gender);
+    let html = `
+      <div class="card"><h2>Is Marriage Promised? — ${esc(r.name)}</h2>
+        <p class="small muted">Timing is shown only if marriage is promised. The native is assessed by <b>KP</b> (7th cusp sub-lord signifying 2/7/11)
+          and <b>Parāśara</b> (7th house, its lord and the Venus/Jupiter kāraka).</p>
+      </div>
+      <div class="grid-2">${promiseCard(pa, r.name)}</div>`;
+    if (!pa.promised) {
+      html += `<div class="callout"><b>Timing withheld.</b> Marriage is not clearly promised for ${esc(r.name)} by KP or Parāśara,
+        so predictive timing is not shown. Review the BPHS &amp; KP Assessment tabs; a qualified astrologer should confirm.</div>`;
+      $('tab-timing').innerHTML = html;
+      return;
+    }
+    html += `
       <div class="card"><h2>Marriage Timing — ${esc(r.name)}</h2>
         <div class="big-score" style="font-size:24px">${near}</div>
         <p class="small muted">Nearest favourable marriage window from the native's Vimśottari dasha + supportive transits.</p></div>
@@ -286,6 +299,7 @@
       <div class="grid-2">${kpTimingCard(r.kpTiming, r.name)}</div>
       <div class="callout small">KP method: marriage fructifies in the conjoined <b>Daśā–Bhukti–Antara</b> of significators of houses
         <b>2, 7 &amp; 11</b>. Rows where all three lords are marriage significators are marked ✔ (strongest).</div>`;
+    $('tab-timing').innerHTML = html;
   }
 
   function renderForecastIndividual() {
@@ -387,7 +401,7 @@
       ${section('9 · Health', 'health')}
       ${section('10 · Sarvashtakavarga', 'sarvashtaka')}
       ${section('11 · Progeny (Santāna)', 'progeny')}
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.15</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.16</p>
       <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>`;
   }
 
@@ -853,6 +867,57 @@
     </div>`;
   }
 
+  /* Assess whether marriage is PROMISED in a chart by KP and Parāśara, with rationale. */
+  function promiseAssessment(chart, gender) {
+    // ---- KP: 7th cusp sub-lord must signify 2/7/11 ----
+    const kpA = KP.assess(chart);
+    const p = kpA.promise;
+    const kpPromised = (p.matched && p.matched.length > 0) && p.confidence >= 30;
+    const kpR = [];
+    kpR.push(`7th cusp sub-lord <b>${p.subLord}</b> signifies houses [${p.sigHouses.join(', ')}].`);
+    if (p.matched && p.matched.length) kpR.push(`It signifies marriage house(s) [${p.matched.join(', ')}] — 2 (family addition), 7 (spouse), 11 (union of desire) → <b>marriage promised</b>.`);
+    else kpR.push(`It does <b>not</b> signify 2/7/11 → KP does not directly promise marriage.`);
+    if (p.denials && p.denials.length) kpR.push(`It also signifies [${p.denials.join(', ')}] (1 self / 6 separation / 10 against the 7th) — works against union.`);
+    kpR.push(`KP promise confidence ${p.confidence}%.`);
+
+    // ---- Parāśara: 7th house, its lord, and the kāraka ----
+    const mi = BPHS.marriageIndex(chart, gender);
+    const sev = mi.seventh;
+    const karakaName = gender === 'female' ? 'Jupiter' : 'Venus';
+    const karakaDg = gender === 'female' ? mi.jupiterDignity : mi.venusDignity;
+    const parPromised = mi.index >= 40 && sev.score >= 35;
+    const parR = [];
+    parR.push(`7th house (spouse) strength ${sev.score}/100 — lord ${sev.lord} in H${sev.lordHouse} (${sev.lordDignity}).`);
+    parR.push(`${karakaName} (marriage kāraka) is ${karakaDg.label}.`);
+    if (mi.seventhAfflictions) parR.push(`${mi.seventhAfflictions} malefic affliction(s) to the 7th — delay/obstacles to marriage.`);
+    else parR.push('7th house free of direct malefic occupation — supportive.');
+    parR.push(`Composite BPHS marriage index ${mi.index}/100 → ${parPromised ? 'marriage promised' : 'promise is weak / needs effort'}.`);
+
+    const promised = kpPromised || parPromised;
+    let verdict;
+    if (kpPromised && parPromised) verdict = { label: 'Marriage Promised (KP & Parāśara)', cls: 'good' };
+    else if (promised) verdict = { label: 'Marriage Promised (qualified — one system)', cls: 'mid' };
+    else verdict = { label: 'Marriage Not Clearly Promised', cls: 'bad' };
+
+    return { promised, kpPromised, parPromised, verdict, confidence: p.confidence, index: mi.index, kpR, parR };
+  }
+
+  function promiseCard(pa, label) {
+    return `<div class="card">
+      <h3>${esc(label)} — Marriage Promise</h3>
+      <div style="margin:4px 0">${chip(pa.verdict.label, pa.verdict.cls)}</div>
+      <div class="kv"><span>KP (7th cusp sub-lord)</span><span><b>${pa.kpPromised ? 'Promised' : 'Not promised'}</b> · ${pa.confidence}%</span></div>
+      <div class="kv"><span>Parāśara (7th house &amp; kāraka)</span><span><b>${pa.parPromised ? 'Promised' : 'Weak'}</b> · index ${pa.index}/100</span></div>
+      <p class="small" style="margin:8px 0 2px"><b>KP rationale</b></p>${pa.kpR.map((x) => `<p class="small bhava-char-item">• ${x}</p>`).join('')}
+      <p class="small" style="margin:8px 0 2px"><b>Parāśara rationale</b></p>${pa.parR.map((x) => `<p class="small bhava-char-item">• ${esc(x)}</p>`).join('')}
+    </div>`;
+  }
+  function notPromisedNote(label) {
+    return `<div class="card"><h3>${esc(label)} — Timing withheld</h3>
+      <div class="callout">Marriage is not clearly promised for ${esc(label)} by KP or Parāśara, so predictive timing is not shown.
+        Review the BPHS &amp; KP Assessment tabs; a qualified astrologer should confirm before relying on timing.</div></div>`;
+  }
+
   function renderTiming() {
     const r = state.results; const w = r.window;
     function topList(person, label) {
@@ -865,29 +930,53 @@
     }
     const fmtWin = (n) => n ? `${Dasha.fmtDMY(n.startJd)} – ${Dasha.fmtDMY(n.endJd)}` : '—';
     const period = (n) => n ? `${n.md}/${n.ad}/${n.pd}` : '—';
-    $('tab-timing').innerHTML = `
+    function parTimingCard(pw, label, who) {
+      return `<div class="card">
+        <h3>${label} — own chart (Parāśara)</h3>
+        <div class="big-score" style="font-size:20px">${fmtWin(pw.nearest)}</div>
+        <div class="kv"><span>Dasha (MD/AD/PD)</span><span>${period(pw.nearest)}</span></div>
+        <p class="small muted">Nearest favourable marriage window from the ${who}'s own Vimśottari dasha + transits.</p>
+      </div>`;
+    }
+
+    const paB = promiseAssessment(state.boy, 'male');
+    const paG = promiseAssessment(state.girl, 'female');
+
+    let html = `
+      <div class="card">
+        <h2>Is Marriage Promised?</h2>
+        <p class="small muted">Per classical principle, <b>timing is meaningful only when marriage is promised</b> in the chart.
+          Each partner is first assessed by <b>KP</b> (7th cusp sub-lord signifying 2/7/11) and <b>Parāśara</b>
+          (7th house, its lord and the Venus/Jupiter kāraka). Possible timing is shown below only for a partner whose marriage is promised.</p>
+      </div>
+      <div class="grid-2">${promiseCard(paB, 'Groom (Boy)')}${promiseCard(paG, 'Bride (Girl)')}</div>`;
+
+    if (!paB.promised && !paG.promised) {
+      html += `<div class="callout"><b>Timing withheld.</b> Marriage is not clearly promised for either partner by KP or Parāśara,
+        so predictive timing is not shown. Please review the BPHS &amp; KP Assessment tabs; remedies or re-evaluation by a qualified
+        astrologer are advised before considering timing.</div>`;
+      $('tab-timing').innerHTML = html;
+      return;
+    }
+
+    // Joint window — only when BOTH partners are promised
+    if (paB.promised && paG.promised) {
+      html += `
       <div class="card">
         <h2>Nearest Marriage Timing</h2>
         <div class="big-score" style="font-size:26px">${esc(w.nearestRange)}</div>
         <p class="small muted"><b>Joint window</b> — earliest season where both partners' Dasha readiness and supportive transits coincide.</p>
         <div class="kv"><span>Groom running Dasha then</span><span>${w.boyDasha ? `${w.boyDasha.md.lord}/${w.boyDasha.ad?w.boyDasha.ad.lord:'-'}/${w.boyDasha.pd?w.boyDasha.pd.lord:'-'}` : '-'}</span></div>
         <div class="kv"><span>Bride running Dasha then</span><span>${w.girlDasha ? `${w.girlDasha.md.lord}/${w.girlDasha.ad?w.girlDasha.ad.lord:'-'}/${w.girlDasha.pd?w.girlDasha.pd.lord:'-'}` : '-'}</span></div>
-      </div>
+      </div>`;
+    } else {
+      html += `<div class="callout small">Joint marriage window is shown only when marriage is promised for <b>both</b> partners.</div>`;
+    }
 
-      <h2 style="margin:6px 2px">Individual Marriage Timing</h2>
+    html += `<h2 style="margin:6px 2px">Individual Marriage Timing (Parāśara)</h2>
       <div class="grid-2">
-        <div class="card">
-          <h3>Groom (Boy) — own chart</h3>
-          <div class="big-score" style="font-size:20px">${fmtWin(w.boy.nearest)}</div>
-          <div class="kv"><span>Dasha (MD/AD/PD)</span><span>${period(w.boy.nearest)}</span></div>
-          <p class="small muted">Nearest favourable marriage window derived from the groom's own Vimśottari dasha + transits.</p>
-        </div>
-        <div class="card">
-          <h3>Bride (Girl) — own chart</h3>
-          <div class="big-score" style="font-size:20px">${fmtWin(w.girl.nearest)}</div>
-          <div class="kv"><span>Dasha (MD/AD/PD)</span><span>${period(w.girl.nearest)}</span></div>
-          <p class="small muted">Nearest favourable marriage window derived from the bride's own Vimśottari dasha + transits.</p>
-        </div>
+        ${paB.promised ? parTimingCard(w.boy, 'Groom (Boy)', 'groom') : notPromisedNote('Groom (Boy)')}
+        ${paG.promised ? parTimingCard(w.girl, 'Bride (Girl)', 'bride') : notPromisedNote('Bride (Girl)')}
       </div>
 
       <div class="callout"><b>Note —</b> The <b>Muhūrta (electional date &amp; time) for the marriage should be fixed on the basis of the Girl's (Bride's) chart.</b>
@@ -896,20 +985,22 @@
 
       <h2 style="margin:6px 2px">KP-System Marriage Timing</h2>
       <div class="grid-2">
-        ${kpTimingCard(r.kpTiming.boy, 'Groom (Boy)')}
-        ${kpTimingCard(r.kpTiming.girl, 'Bride (Girl)')}
+        ${paB.promised ? kpTimingCard(r.kpTiming.boy, 'Groom (Boy)') : notPromisedNote('Groom (Boy)')}
+        ${paG.promised ? kpTimingCard(r.kpTiming.girl, 'Bride (Girl)') : notPromisedNote('Bride (Girl)')}
       </div>
       <div class="callout small">KP method: marriage fructifies in the conjoined <b>Daśā–Bhukti–Antara</b> of planets that are
         significators of houses <b>2, 7 &amp; 11</b>. Rows where the Daśā, Bhukti and Antara lords are <i>all</i> marriage
-        significators are marked ✔ (strongest). The 7th cusp sub-lord must promise marriage for these periods to deliver.</div>
+        significators are marked ✔ (strongest).</div>
 
       <div class="grid-2">
-        ${topList(w.boy, 'Groom')}
-        ${topList(w.girl, 'Bride')}
+        ${paB.promised ? topList(w.boy, 'Groom') : ''}
+        ${paG.promised ? topList(w.girl, 'Bride') : ''}
       </div>
       <div class="callout small">Timing blends Vimśottari MD/AD/PD favourability (7th/2nd/11th/5th lords, the
         Venus/Jupiter kāraka and KP 2-7-11 significators) with Jupiter/Saturn transit triggers. Treat the
         window as a season of opportunity, not an exact date.</div>`;
+
+    $('tab-timing').innerHTML = html;
   }
 
   /* ---------------- Forecast ---------------- */
@@ -1427,7 +1518,7 @@
       ${section('10 · Sarvashtakavarga (SAV)', 'sarvashtaka')}
       ${section('11 · Progeny (Santāna)', 'progeny')}
 
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.15</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.16</p>
       <p class="dev-credit footer-credit">Developed by <b>Dr. Anil Sabaji</b> &nbsp;•&nbsp; Email: anilsabaji@gmail.com</p>
     `;
   }
@@ -1468,7 +1559,7 @@
   let _reportCss = null;
   async function getReportCss() {
     if (_reportCss != null) return _reportCss;
-    try { const res = await fetch('css/styles.css?v=28'); _reportCss = res.ok ? await res.text() : ''; }
+    try { const res = await fetch('css/styles.css?v=29'); _reportCss = res.ok ? await res.text() : ''; }
     catch (e) { _reportCss = ''; }
     return _reportCss;
   }
@@ -1550,7 +1641,7 @@ ${pdfMode ? '/* PDF raster mode: no body padding (margins come from html2pdf); f
 <div class="report-meta">Generated ${esc(dateStr)} — Vedic Marriage Matching Module (BPHS &amp; KP)</div>
 <div id="report-content">${reportHtml}</div>
 <p class="footer-note" style="text-align:center;margin-top:24px;opacity:.7;font-size:11.5px">
-  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.15
+  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.16
 </p>
 <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>
 </body>

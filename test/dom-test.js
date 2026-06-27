@@ -50,7 +50,7 @@ const checks = [
   ['tab-kp', '7th cusp sub-lord'],
   ['tab-koota', 'Ashtakoota'],
   ['tab-kuja', 'Kuja (Maṅgala'],
-  ['tab-timing', 'Nearest Marriage Timing'],
+  ['tab-timing', 'Is Marriage Promised'],
   ['tab-forecast', '20-Year Relationship'],
   ['tab-transit', 'Gochara'],
   ['tab-health', 'Health Compatibility Screener'],
