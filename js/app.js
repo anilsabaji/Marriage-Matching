@@ -309,9 +309,11 @@
       <div class="card"><h2>Marriage Timing — ${esc(r.name)}</h2>
         <div class="big-score" style="font-size:24px">${near}</div>
         <div class="kv"><span>Nearest future window (from today)</span><span><b>${nearFut}</b></span></div>
-        <p class="small muted">Earliest favourable window (age 21–60) from the native's Vimśottari dasha + supportive transits.</p></div>
-      <div class="card"><h3>Favourable marriage windows (age 21–60)</h3>
-        <table><thead><tr><th>Window</th><th>MD/AD/PD</th><th class="num">Score</th></tr></thead><tbody>${rows}</tbody></table></div>
+        <p class="small muted">Predicted = earliest favourable window from age 21 (may be past → back-testing). Nearest future never starts before today.</p></div>
+      <div class="grid-2">
+        ${windowCard(w.past, 'Past windows (age 21 → today)')}
+        ${windowCard(w.future, 'Future windows (today → age 60)')}
+      </div>
       <h2 style="margin:6px 2px">KP-System Marriage Timing</h2>
       <div class="grid-2">${kpTimingCard(r.kpTiming, r.name)}</div>
       <div class="callout small">KP method: marriage fructifies in the conjoined <b>Daśā–Bhukti–Antara</b> of significators of houses
@@ -418,7 +420,7 @@
       ${section('9 · Health', 'health')}
       ${section('10 · Sarvashtakavarga', 'sarvashtaka')}
       ${section('11 · Progeny (Santāna)', 'progeny')}
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.22</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.23</p>
       <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>`;
   }
 
@@ -987,6 +989,20 @@
         Review the BPHS &amp; KP Assessment tabs; a qualified astrologer should confirm before relying on timing.</div></div>`;
   }
 
+  function windowCard(list, title) {
+    const rows = (list || []).slice(0, 10).map((t) => `<tr><td>${Dasha.fmtDMY(t.startJd)} – ${Dasha.fmtDMY(t.endJd)}</td><td>${t.md}/${t.ad}/${t.pd}</td><td class="num">${fix(t.score, 1)}</td></tr>`).join('');
+    return `<div class="card"><h3>${title}</h3>
+      <table><thead><tr><th>Window</th><th>MD/AD/PD</th><th class="num">Score</th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="3" class="muted small">No favourable window in this range.</td></tr>'}</tbody></table></div>`;
+  }
+  function partnerWindowBlock(pw, label) {
+    return `<h2 style="margin:6px 2px">${esc(label)} — favourable marriage windows</h2>
+      <div class="grid-2">
+        ${windowCard(pw.past, 'Past windows (age 21 → today)')}
+        ${windowCard(pw.future, 'Future windows (today → age 60)')}
+      </div>`;
+  }
+
   function renderTiming() {
     const r = state.results; const w = r.window;
     function topList(person, label) {
@@ -1067,13 +1083,11 @@
         significators of houses <b>2, 7 &amp; 11</b>. Rows where the Daśā, Bhukti and Antara lords are <i>all</i> marriage
         significators are marked ✔ (strongest).</div>
 
-      <div class="grid-2">
-        ${paB.promised ? topList(w.boy, 'Groom') : ''}
-        ${paG.promised ? topList(w.girl, 'Bride') : ''}
-      </div>
+      ${paB.promised ? partnerWindowBlock(w.boy, esc(state.boy.meta.name) + ' (Groom)') : ''}
+      ${paG.promised ? partnerWindowBlock(w.girl, esc(state.girl.meta.name) + ' (Bride)') : ''}
       <div class="callout small">Timing blends Vimśottari MD/AD/PD favourability (7th/2nd/11th/5th lords, the
-        Venus/Jupiter kāraka and KP 2-7-11 significators) with Jupiter/Saturn transit triggers. Treat the
-        window as a season of opportunity, not an exact date.</div>`;
+        Venus/Jupiter kāraka and KP 2-7-11 significators) with Jupiter/Saturn transit triggers. Past windows (from age 21)
+        support back-testing; the nearest future window from today is the upcoming opportunity. Treat each as a season, not an exact date.</div>`;
 
     $('tab-timing').innerHTML = html;
   }
@@ -1593,7 +1607,7 @@
       ${section('10 · Sarvashtakavarga (SAV)', 'sarvashtaka')}
       ${section('11 · Progeny (Santāna)', 'progeny')}
 
-      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.22</p>
+      <p class="footer-note">For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations — Build v5.23</p>
       <p class="dev-credit footer-credit">Developed by <b>Dr. Anil Sabaji</b> &nbsp;•&nbsp; Email: anilsabaji@gmail.com</p>
     `;
   }
@@ -1634,7 +1648,7 @@
   let _reportCss = null;
   async function getReportCss() {
     if (_reportCss != null) return _reportCss;
-    try { const res = await fetch('css/styles.css?v=35'); _reportCss = res.ok ? await res.text() : ''; }
+    try { const res = await fetch('css/styles.css?v=36'); _reportCss = res.ok ? await res.text() : ''; }
     catch (e) { _reportCss = ''; }
     return _reportCss;
   }
@@ -1716,7 +1730,7 @@ ${pdfMode ? '/* PDF raster mode: no body padding (margins come from html2pdf); f
 <div class="report-meta">Generated ${esc(dateStr)} — Vedic Marriage Matching Module (BPHS &amp; KP)</div>
 <div id="report-content">${reportHtml}</div>
 <p class="footer-note" style="text-align:center;margin-top:24px;opacity:.7;font-size:11.5px">
-  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.22
+  For educational &amp; decision-support purposes only. Sidereal (Lahiri) calculations. Build v5.23
 </p>
 <p class="dev-credit footer-credit">By <b>Dr. Anil Sabaji</b>, Email: anilsabaji@gmail.com</p>
 </body>
