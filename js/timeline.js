@@ -86,10 +86,13 @@ const Timeline = (function () {
     const strong = scored.filter((s) => s.score >= threshold && s.score > 0);
     strong.sort((a, b) => a.startJd - b.startJd);
     const nearest = strong[0] || scored[0];
-    // nearest FUTURE favourable window (start/extends on or after today)
+    // split favourable windows into past (age21→today) and future (today→age60)
     const tj = todayJd || fromJd;
-    const nearestFuture = strong.find((s) => s.endJd >= tj) || null;
-    return { mp, sp, scored, nearest, nearestFuture, topByScore: scored.slice(0, 8) };
+    const past = strong.filter((s) => s.startJd < tj);
+    const future = strong.filter((s) => s.startJd >= tj);
+    // nearest FUTURE favourable window — must START on/after today (never a past date)
+    const nearestFuture = future[0] || null;
+    return { mp, sp, scored, nearest, nearestFuture, past, future, topByScore: scored.slice(0, 8) };
   }
 
   /* ====================================================================
