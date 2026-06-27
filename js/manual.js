@@ -82,6 +82,30 @@ const Manual = (function () {
       </ol>
       <p>A confidence score is derived from promise-house matches minus denial-house links.</p>
 
+      <h3>4b. Marriage Promise Scoring (Tab 8)</h3>
+      <p>Tab 8 first decides whether marriage is <b>promised</b> before showing any timing. Two
+      independent scores are computed and their derivation is printed on screen and in the report.</p>
+      <p><b>KP confidence %</b> — from the significator houses of the 7th cusp sub-lord:</p>
+      <ul>
+        <li><code>matched</code> = sub-lord's significator houses ∩ {2, 7, 11} (family / spouse / union).</li>
+        <li><code>denials</code> = significator houses ∩ {1, 6, 10} (self / separation / against the 7th).</li>
+        <li><code>confidence = matched×25 − denials×12 + 25</code>, clamped to 5–98%.</li>
+        <li>KP counts as <em>promised</em> when there is a 2/7/11 match <b>and</b> confidence ≥ 30%.</li>
+      </ul>
+      <p><b>BPHS marriage index /100</b> — a weighted blend of the marriage houses' strengths:</p>
+      <ul>
+        <li>Each house strength starts at 50 and is adjusted by lord dignity (×4), lord placement
+            (Kendra/Trikoṇa +6, Dusthāna −10), occupants (benefic +5 / malefic −4, ± dignity), aspects
+            (benefic +3 / malefic −2) and a retrograde-lord penalty; clamped 2–98.</li>
+        <li>Weighted average using 7→3.0, 2→1.5, 11→1.5, 5→1.0, 8→1.0, 12→0.8, 4→0.6.</li>
+        <li>Then <code>+ kāraka dignity ×2</code> (Venus for the groom, Jupiter for the bride) and
+            <code>− 3 × (malefics in the 7th)</code>; clamped 5–98.</li>
+        <li>Parāśara counts as <em>promised</em> when index ≥ 40 and the 7th-house strength ≥ 35.</li>
+      </ul>
+      <p>These are transparent, rule-based heuristics that encode classical principles — indicative,
+      not statistical probabilities. The per-house contributions and the arithmetic for both scores are
+      shown in each partner's promise card.</p>
+
       <h3>5. Koota / Guna Milan (<code>koota.js</code>)</h3>
       <p><b>Ashtakoota (max 36):</b> Varṇa (1), Vaśya (2), Tārā/Dina (3), Yoni (4),
       Graha Maitri (5), Gaṇa (6), Bhakūṭa (7), Nāḍī (8). Each is computed from the
