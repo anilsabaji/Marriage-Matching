@@ -170,6 +170,11 @@ const Manual = (function () {
       Mahā/Antar/Pratyantar daśā <i>and</i> transits are simultaneously adverse
       (Sade Sati, Saturn/Rahu/Mars on the 7th, etc.) — these "trigger windows" are
       marked red on the commitment graph and flagged with ⚠ in the period table.</p>
+      <p><b>Severe divorce combination (×3).</b> When <b>Sun and Ketu are both in the 7th</b>, conjoined
+      with or aspected by <b>Mars (or another malefic)</b>, with <b>no benefic Jupiter aspect</b> on the
+      7th, and the <b>Lagna lord is caught on the Rāhu–Ketu axis</b> (conjunct a node), the Parāśara
+      divorce risk is amplified about <b>three-fold</b> (and floored to the High band) — an unprotected,
+      nodally-derailed 7th house.</p>
 
       <h3>9. Health Compatibility Screener (<code>health.js</code>)</h3>
       <p>For each partner the screener evaluates the Lagna lord (vitality), the 6th
